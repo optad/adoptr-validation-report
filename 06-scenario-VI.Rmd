@@ -1,4 +1,4 @@
-# Scenario VI: binomial distribution {#scenarioVI}
+# Scenario VI: binomial distribution, point prior {#scenarioVI}
 
 ## Details
 
@@ -27,7 +27,7 @@ pow_cnstr  <- Power(datadist, prior) >= min_power
 
 
 
-## Variant VI-1, efficiency of optimal designs for binomial distribution {#variantVI_1}
+## Variant VI-1: Minimizing Expected Sample Size Under Point Prior {#variantVI_1}
 
 In this variant, it is evaluated whether the optimization leads to more
 efficient designs and is plausible with published results.
@@ -74,7 +74,6 @@ The order of integration is set to `r order`.
 tbl_designs <- tbl_designs %>% 
     mutate(
        optimal = purrr::map(initial, ~minimize(
-         
           ess,
           subject_to(
               toer_cnstr,
@@ -221,4 +220,237 @@ tibble(
             panel.grid       = element_blank(),
             legend.direction = "vertical",
             legend.position  = "bottom" )
+```
+
+## Variant VI-2: Minimizing Expected Sample Size under Null Hypothesis {#variantVI_2}
+
+### Objective
+Expected sample size under the null hypothesis is minimized.
+
+### Constraints
+The constraints remain unchanged.
+
+### Initial design
+Optimization under the null favors a monotonically increasing sample size function, and thus also a different shape of the $c_2$ function. Thus, we start with a constant $c_2$ function by heuristically setting it to $2$ on the continuation area. Also, optimizing under the null favors extremely conservative boundaries for early efficacy stopping and we thus impose a fairly liberal upper bound of $3$ for early efficacy stopping.
+```{r}
+init_design_h0 <- tbl_designs %>% 
+    filter(type == "two-stage") %>% 
+    .$initial %>% 
+    .[[1]]
+init_design_h0@c2_pivots <- rep(2, order)
+
+ub_design <- TwoStageDesign(
+    3 * init_design_h0@n1,
+    2,
+    3,
+    rep(300, order),
+    rep(3.0, order)
+)
+```
+
+### Optimization
+The optimal two-stage design is now computed.
+```{r}
+opt_h0 <- minimize(
+  
+    ess0,
+    
+    subject_to(
+        toer_cnstr,
+        pow_cnstr
+    ),
+    
+    initial_design        = init_design_h0,
+    upper_boundary_design = ub_design,
+    opts = opts )
+```
+### Test cases
+Make sure that the optimization algorithm converged within the set maximum number of iterations:
+```{r}
+opt_h0$nloptr_return$iterations %>% 
+    {print(.); .} %>% 
+    {testthat::expect_true(. < opts$maxeval)}
+```
+The $n_2$ function of the optimal two-stage design is expected to be monotonously increasing.
+```{r}
+expect_true(
+    all(diff(opt_h0$design@n2_pivots) > 0) )
+
+```
+Next, the type one error rate and power constraints are tested.
+```{r}
+tbl_performance <- tibble(
+    delta = c(.0, .2) ) %>% 
+    mutate(
+        power     = map(
+            delta, 
+            ~evaluate(
+                Power(datadist, PointMassPrior(., 1)), 
+                opt_h0$design) ),
+        power_sim = map(
+            delta, 
+            ~sim_pr_reject(opt_h0$design, ., datadist)$prob),
+        ess       = map(
+            delta, 
+            ~evaluate(ExpectedSampleSize(
+                    datadist, 
+                    PointMassPrior(., 1) ), 
+                opt_h0$design) ),
+        ess_sim   = map(
+            delta, 
+            ~sim_n(opt_h0$design, . ,datadist)$n ) ) %>% 
+    unnest(., cols = c(power, power_sim, ess, ess_sim))
+
+print(tbl_performance)
+```
+```{r}
+testthat::expect_lte(
+    tbl_performance %>% filter(delta == 0) %>% .$power_sim,
+    alpha * (1 + tol) )
+
+testthat::expect_gte(
+    tbl_performance %>% filter(delta == 0.2) %>% .$power_sim,
+    min_power * (1 - tol) )
+
+# make sure that evaluate() leads to same results
+testthat::expect_equal(
+    tbl_performance$power, tbl_performance$power_sim, 
+    tol   = tol,
+    scale = 1 )
+
+testthat::expect_equal(
+    tbl_performance$ess, tbl_performance$ess_sim, 
+    tol   = tol_n,
+    scale = 1 )
+```
+The expected sample size under the null must be lower or equal than the expected sample size of the initial `rpact` group-sequential design.
+```{r}
+testthat::expect_gte(
+    evaluate(ess0, 
+             tbl_designs %>% 
+                filter(type == "two-stage") %>% 
+                .$initial %>% 
+                .[[1]] ),
+    evaluate(ess0, opt_h0$design) )
+```
+
+
+## Variant VI-3: Conditional Power constraint
+
+### Objective
+Same as in [VI-1](#variantVI_1), the expected sample size under the alternative is minimized.
+
+### Constraints
+Besides the previous global type one error rate and power constraints, an additional constraint on conditional power is imposed.
+
+```{r}
+cp       <- ConditionalPower(datadist, prior)
+cp_cnstr <- cp >= .85
+```
+
+### Initial Design
+The same initial (generic two-stage) design as in [VI-1](#variantVI_1) is used.
+
+### Optimization
+```{r}
+opt_cp <- minimize(
+      
+    ess,
+    subject_to(
+        toer_cnstr,
+        pow_cnstr,
+        cp_cnstr # new constraint
+    ),
+
+    initial_design = tbl_designs %>% 
+        filter(type == "two-stage") %>% 
+        .$initial %>% 
+        .[[1]],
+    opts = opts )
+```
+
+### Test Cases
+Check if the optimization converged.
+```{r}
+opt_cp$nloptr_return$iterations %>% 
+    {print(.); .} %>% 
+    {testthat::expect_true(. < opts$maxeval)}
+```
+
+Check constraints.
+```{r}
+tbl_performance <- tibble(
+    delta = c(.0, .2) ) %>% 
+    mutate(
+        power     = map(
+            delta, 
+            ~evaluate(
+                Power(datadist, PointMassPrior(., 1)), 
+                opt_cp$design) ),
+        power_sim = map(
+            delta, 
+            ~sim_pr_reject(opt_cp$design, ., datadist)$prob),
+        ess       = map(
+            delta, 
+            ~evaluate(ExpectedSampleSize(
+                    datadist, 
+                    PointMassPrior(., 1) ), 
+                opt_cp$design) ),
+        ess_sim   = map(
+            delta, 
+            ~sim_n(opt_cp$design, . ,datadist)$n ) ) %>% 
+    unnest(., cols = c(power, power_sim, ess, ess_sim))
+
+print(tbl_performance)
+```
+
+```{r}
+testthat::expect_lte(
+    tbl_performance %>% filter(delta == 0) %>% .$power_sim,
+    alpha * (1 + tol) )
+
+testthat::expect_gte(
+    tbl_performance %>% filter(delta == 0.2) %>% .$power_sim,
+    min_power * (1 - tol) )
+
+# make sure that evaluate() leads to same results
+testthat::expect_equal(
+    tbl_performance$power, tbl_performance$power_sim, 
+    tol   = tol,
+    scale = 1 )
+
+testthat::expect_equal(
+    tbl_performance$ess, tbl_performance$ess_sim, 
+    tol   = tol_n,
+    scale = 1 )
+```
+The conditional power constraint is evaluated and tested on a grid over the continuation region (both simulated via numerical integration).
+
+```{r}
+tibble(
+    x1     = seq(opt_cp$design@c1f, opt_cp$design@c1e, length.out = 25),
+    cp     = map_dbl(x1, ~evaluate(cp, opt_cp$design, .)),
+    cp_sim = map_dbl(x1, function(x1) {
+        x2  <- simulate(datadist, 10^6, n2(opt_cp$design, x1), .2, 42)
+        rej <- ifelse(x2 > c2(opt_cp$design, x1), 1, 0)
+        return(mean(rej))
+    }) ) %>% 
+  {print(.); .} %>% {
+      testthat::expect_true(all(.$cp     >= 0.85 * (1 - tol)))
+      testthat::expect_true(all(.$cp_sim >= 0.85 * (1 - tol))) 
+      testthat::expect_true(all(abs(.$cp - .$cp_sim) <= tol)) }
+```
+Finally, the expected sample size under the alternative prior should be larger than in the case without the constraint [VI-1](##variantVI_1).
+
+
+```{r}
+testthat::expect_gte(
+    evaluate(ess, opt_cp$design),
+    evaluate(
+        ess, 
+        tbl_designs %>% 
+            filter(type == "two-stage") %>% 
+            .$optimal %>% 
+            .[[1]] %>% 
+            .$design ) )
 ```
