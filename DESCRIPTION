@@ -1,4 +1,26 @@
-Type: Website
+Package: adoptrValidationReport
+Title: Validation report for the adoptr package
+Version: 1.1
+Authors@R: c(
+        person("Kevin", "Kunzmann", 
+                role = c("aut", "cre"), 
+                comment = c(ORCID = "0000-0002-1140-7143")
+        ),
+        person("Maximilian", "Pilz", 
+                role = c("aut"), 
+                email = "maximilian.pilz@itwm.fraunhofer.de",
+                comment = c(ORCID = "0000-0002-9685-1613")
+        ),
+        person("Jan", "Meis",
+                role = c("aut"),
+                email = "meis@imbi.uni-heidelberg.de"),
+        person("Nico", "Bruder",
+                role = c("aut"),
+                email = "bruder@imbi.uni-heidelberg.de")
+    )
+Description: This repository contains the validation report of the adoptr package
+License: MIT + file LICENSE
+Encoding: UTF-8
 Depends:
     adoptr,
     devtools,
@@ -8,3 +30,5 @@ Depends:
     testthat,
     pwr,
     tinytex
+Remotes:
+    github::optad/adoptr
