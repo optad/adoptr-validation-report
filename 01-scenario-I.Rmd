@@ -129,7 +129,7 @@ tbl_designs %>%
 The $n_2$ function of the optimal two-stage design is expected to be 
 monotonously decreasing:
 ```{r}
-expect_true(
+testthat::expect_true(
     all(diff(
         # get optimal two-stage design n2 pivots
         tbl_designs %>% filter(type == "two-stage") %>%
@@ -176,16 +176,16 @@ is based on the inverse normal combination test.
 ```{r}
 testthat::expect_lte(
   evaluate(ess, 
-           tbl_designs %>%
-             filter(type == "group-sequential") %>% 
-             .$optimal %>% 
-             .[[1]]  %>%
-             .$design ),
+             tbl_designs %>% 
+                filter(type == "group-sequential") %>% 
+                .$optimal %>% 
+                .[[1]]  %>%
+                .$design ),
     evaluate(ess, 
              tbl_designs %>% 
-               filter(type == "group-sequential") %>% 
-               .$initial %>% 
-               .[[1]] ) )
+                filter(type == "group-sequential") %>% 
+                .$initial %>% 
+                .[[1]] ) )
 ```
 
 
@@ -520,4 +520,3 @@ tibble(
             panel.grid      = element_blank(),
             legend.position = "bottom" )
 ```
-
