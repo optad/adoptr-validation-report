@@ -252,17 +252,17 @@ tibble(
     design = list(
         opt %>% 
             filter(order == 11) %>% 
-            pull(design) %>% 
+            .$design %>% 
             .[[1]] %>% 
             .$design, 
         opt_utility %>% 
             filter(lambda == 100) %>% 
-            pull(design) %>% 
+            .$design %>% 
             .[[1]] %>% 
             .$design, 
         opt_utility %>% 
             filter(lambda == 200) %>% 
-            pull(design) %>% 
+            .$design %>% 
             .[[1]] %>% 
             .$design ) ) %>% 
     group_by(type) %>% 
@@ -404,17 +404,17 @@ tibble(
     design = list(
         opt %>% 
             filter(order == 11) %>% 
-            pull(design) %>% 
+            .$design %>% 
             .[[1]] %>% 
             .$design, 
         opt_n1 %>% 
             filter(lambda == 0.05) %>% 
-            pull(design) %>% 
+            .$design %>% 
             .[[1]] %>% 
             .$design, 
         opt_n1 %>% 
             filter(lambda == 0.2) %>% 
-            pull(design) %>% 
+            .$design %>% 
             .[[1]] %>% 
             .$design ) ) %>% 
    # test if n_1 decreases for increasing lambda
@@ -571,17 +571,17 @@ tibble(
     design = list(
         opt %>% 
             filter(order == 11) %>% 
-            pull(design) %>% 
+            .$design %>% 
             .[[1]] %>% 
             .$design, 
         opt_n2 %>% 
             filter(lambda == 0.01) %>% 
-            pull(design) %>% 
+            .$design %>% 
             .[[1]] %>% 
             .$design, 
         opt_n2 %>% 
             filter(lambda == 0.1) %>% 
-            pull(design) %>% 
+            .$design %>% 
             .[[1]] %>% 
             .$design ) ) %>% 
    # test if average_n2 decreases for increasing lambda

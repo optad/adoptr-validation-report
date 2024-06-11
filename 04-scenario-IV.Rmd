@@ -451,17 +451,17 @@ tibble(
     design = list(
         tbl_designs %>% 
             filter(type == "two-stage") %>% 
-            pull(optimal) %>% 
+            .$optimal %>% 
             .[[1]] %>% 
             .$design, 
         tbl_designs_9 %>% 
             filter(type == "two-stage") %>% 
-            pull(optimal) %>% 
+            .$optimal %>% 
             .[[1]] %>% 
             .$design, 
         tbl_designs_5 %>% 
             filter(type == "two-stage") %>% 
-            pull(optimal) %>% 
+            .$optimal %>% 
             .[[1]] %>% 
             .$design ) ) %>% 
     group_by(constraints) %>% 

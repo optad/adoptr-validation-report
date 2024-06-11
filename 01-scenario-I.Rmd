@@ -176,16 +176,16 @@ is based on the inverse normal combination test.
 ```{r}
 testthat::expect_lte(
   evaluate(ess, 
-             tbl_designs %>% 
-                filter(type == "group-sequential") %>% 
-                pull(optimal) %>% 
-                .[[1]]  %>%
-                .$design ),
+           tbl_designs %>%
+             filter(type == "group-sequential") %>% 
+             .$optimal %>% 
+             .[[1]]  %>%
+             .$design ),
     evaluate(ess, 
              tbl_designs %>% 
-                filter(type == "group-sequential") %>% 
-                pull(initial) %>% 
-                .[[1]] ) )
+               filter(type == "group-sequential") %>% 
+               .$initial %>% 
+               .[[1]] ) )
 ```
 
 
@@ -218,7 +218,7 @@ liberal upper bound of $3$ for early efficacy stopping.
 ```{r}
 init_design_h0 <- tbl_designs %>% 
     filter(type == "two-stage") %>% 
-    pull(initial) %>% 
+    .$initial %>% 
     .[[1]]
 init_design_h0@c2_pivots <- rep(2, order)
 
@@ -296,11 +296,11 @@ tbl_performance <- tibble(
 print(tbl_performance)
 
 testthat::expect_lte(
-    tbl_performance %>% filter(delta == 0) %>% pull(power_sim),
+    tbl_performance %>% filter(delta == 0) %>% .$power_sim,
     alpha * (1 + tol) )
 
 testthat::expect_gte(
-    tbl_performance %>% filter(delta == 0.4) %>% pull(power_sim),
+    tbl_performance %>% filter(delta == 0.4) %>% .$power_sim,
     min_power * (1 - tol) )
 
 # make sure that evaluate() leads to same results
@@ -322,7 +322,7 @@ testthat::expect_gte(
     evaluate(ess0, 
              tbl_designs %>% 
                 filter(type == "two-stage") %>% 
-                pull(initial) %>% 
+                .$initial %>% 
                 .[[1]] ),
     evaluate(ess0, opt_h0$design) )
 ```
@@ -371,7 +371,7 @@ opt_cp <- minimize(
 
     initial_design = tbl_designs %>% 
         filter(type == "two-stage") %>% 
-        pull(initial) %>% 
+        .$initial %>% 
         .[[1]],
     opts = opts )
 ```
@@ -416,11 +416,11 @@ tbl_performance <- tibble(
 print(tbl_performance)
 
 testthat::expect_lte(
-    tbl_performance %>% filter(delta == 0) %>% pull(power_sim),
+    tbl_performance %>% filter(delta == 0) %>% .$power_sim,
     alpha * (1 + tol) )
 
 testthat::expect_gte(
-    tbl_performance %>% filter(delta == 0.4) %>% pull(power_sim),
+    tbl_performance %>% filter(delta == 0.4) %>% .$power_sim,
     min_power * (1 - tol) )
 
 # make sure that evaluate() leads to same results
@@ -464,7 +464,7 @@ testthat::expect_gte(
         ess, 
         tbl_designs %>% 
             filter(type == "two-stage") %>% 
-            pull(optimal) %>% 
+            .$optimal %>% 
             .[[1]] %>% 
             .$design ) )
 ```
@@ -492,7 +492,7 @@ tibble(
     design = list(
         tbl_designs %>% 
             filter(type == "two-stage") %>% 
-            pull(optimal) %>% 
+            .$optimal %>% 
             .[[1]] %>% 
             .$design, 
         opt_h0$design, 

@@ -195,7 +195,7 @@ of $3$ for early efficacy stopping.
 ```{r}
 init_design_h0 <- tbl_designs %>% 
     filter(type == "two-stage") %>% 
-    pull(initial) %>% 
+    .$initial %>% 
     .[[1]]
 init_design_h0@c2_pivots <- rep(2, order)
 
@@ -269,7 +269,7 @@ testthat::expect_lte(
         ess_0, 
         tbl_designs %>% 
             filter(type == "two-stage") %>% 
-            pull(optimal) %>% 
+            .$optimal %>% 
             .[[1]] %>% 
             .$design )
 )
@@ -365,7 +365,7 @@ testthat::expect_gte(
         ess, 
         tbl_designs %>% 
             filter(type == "two-stage") %>% 
-            pull(optimal) %>% 
+            .$optimal %>% 
             .[[1]] %>% 
             .$design )
 )
@@ -391,7 +391,7 @@ tibble(
     design = list(
         tbl_designs %>% 
             filter(type == "two-stage") %>% 
-            pull(optimal) %>% 
+            .$optimal %>% 
             .[[1]] %>% 
             .$design, 
         opt_neg$design, 
