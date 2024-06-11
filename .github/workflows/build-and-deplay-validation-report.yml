@@ -62,7 +62,6 @@ jobs:
       - name: Install dependencies
         run: |
           remotes::install_deps(dependencies = TRUE)
-          remotes::install_github("https://github.com/optad/adoptr.git")
           tinytex::install_tinytex()
         shell: Rscript {0}
 
