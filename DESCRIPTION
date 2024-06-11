@@ -1,0 +1,10 @@
+Type: Website
+Depends:
+    adoptr,
+    devtools,
+    tidyverse, 
+    bookdown,
+    rpact,
+    testthat,
+    pwr,
+    tinytex

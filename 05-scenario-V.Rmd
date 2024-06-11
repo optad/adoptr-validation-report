@@ -1,0 +1,619 @@
+# Scenario V: single-arm design, medium effect size {#scenarioV}
+
+## Details
+
+In this scenario, again a point prior is analyzed. 
+The null hypothesis is $\delta \leq 0$ and we assume an alternative effect size
+of $\delta = 0.3$.
+Type one error rate should be protected at 2.5\% and the design's power should
+be at least 80\%.
+Differently than in the previous scenarios, we are assuming a single-arm
+design throughout this scenario.
+
+```{r}
+# data distribution and hypotheses
+datadist   <- Normal(two_armed = FALSE)
+H_0        <- PointMassPrior(.0, 1)
+prior      <- PointMassPrior(.3, 1)
+
+# define constraints
+alpha      <- 0.025
+min_power  <- 0.8
+toer_cnstr <- Power(datadist, H_0)   <= alpha
+pow_cnstr  <- Power(datadist, prior) >= min_power
+```
+
+
+
+## Variant V-1, sensitivity to integration order {#variantV_1}
+
+In this variant, the sensitivity of the optimization with respect to the
+integration order is investigated. 
+We apply three different integration orders: 5, 8, and 11.
+
+### Objective
+
+Expected sample size under the alternative point mass prior $\delta = 0.3$
+is minimized.
+```{r}
+ess <- ExpectedSampleSize(datadist, prior)
+```
+
+
+### Constraints
+
+No additional constraints are considered in this variant.
+
+
+### Initial Design
+
+In order to vary the initial design, `rpact` is not used in this variant.
+Instead, the following heuristical considerations are made. 
+A fixed design for these parameters would require
+`r ceiling(pwr::pwr.t.test(d = .3, sig.level = .025, power = .8, alternative = "greater")$n)` 
+subjects per group. We use the half of this as initial values for the 
+sample sizes. 
+The initial stop for futility is at $c_1^f=0$, i.e., if the effect shows 
+in the opponent direction to the alternative. 
+The starting values for the efficacy stop and for $c_2$ is the $1-\alpha$-
+quantile of the normal distribution.
+
+```{r}
+init_design <- function(order) {
+    TwoStageDesign(
+        n1 = ceiling(pwr::pwr.t.test(d = .3, 
+                                     sig.level = .025, 
+                                     power = .8, 
+                                     alternative = "greater")$n) / 2,
+        c1f = 0,
+        c1e = qnorm( 1 - 0.025),
+        n2 = ceiling(pwr::pwr.t.test(d = .3, 
+                                     sig.level = .025, 
+                                     power = .8, 
+                                     alternative = "greater")$n) / 2,
+        c2 = qnorm(1 - 0.025),
+        order = order
+)
+}
+
+```
+
+
+### Optimization 
+
+The optimal design is computed for three different integration orders: 5, 8,
+and 11. 
+
+```{r}
+opt_design <- function(order) {
+    minimize(
+        ess,
+        subject_to(
+            toer_cnstr,
+            pow_cnstr
+        ),
+        initial_design = init_design(order),
+        upper_boundary_design = TwoStageDesign(200, 2, 4, 200, 3, order),
+        opts = opts
+    )
+}
+
+opt <- tibble(
+  order  = c(5, 8, 11),
+  design = lapply(c(5, 8, 11), function(x) opt_design(x))
+)
+```
+
+### Test cases
+
+Check if the optimization algorithm converged in all cases.
+```{r}
+opt %>% 
+  transmute(
+      order, 
+      iterations = purrr::map_int(opt$design, 
+                                  ~.$nloptr_return$iterations) ) %>%
+  {print(.); .} %>% 
+  {testthat::expect_true(all(.$iterations < opts$maxeval))}
+```
+
+Test the constraints on type one error rate and power by simulation and 
+compare the results to the outcome of `evaluate()`.
+
+```{r}
+opt %>% 
+  transmute(
+      order, 
+      toer      = map_dbl(design,
+                            ~evaluate(Power(datadist, PointMassPrior(.0, 1)), .$design) ),
+        toer_sim  = map_dbl(opt$design, 
+                               ~sim_pr_reject(.[[1]], .0, datadist)$prob), 
+        power     = map_dbl(design,
+                            ~evaluate(Power(datadist, PointMassPrior(.3, 1)), .$design) ),
+        power_sim = map_dbl(opt$design, 
+                               ~sim_pr_reject(.[[1]], .3, datadist)$prob),
+        ess       = map_dbl(design, ~evaluate(ess, .$design) ),
+        ess_sim   = map_dbl(opt$design, ~sim_n(.[[1]], .3, datadist)$n)
+  ) %>% 
+  unnest(., cols = c(toer, toer_sim, power, power_sim)) %>% 
+  {print(.); .} %>% {
+  testthat::expect_true(all(.$toer      <= alpha * (1 + tol)))
+  testthat::expect_true(all(.$toer_sim  <= alpha * (1 + tol)))
+  testthat::expect_true(all(.$power     >= min_power * (1 - tol)))
+  testthat::expect_true(all(.$power_sim >= min_power * (1 - tol))) }
+```
+
+
+
+## Variant V-2, utility maximization {#variantV_2}
+
+
+### Objective
+
+In this variant, a utility function consisting of expected sample size and
+power is minimized.
+The parameter $\lambda$ that is describing the ratio between expected
+sample size and power is varied. 
+
+```{r}
+pow <- Power(datadist, prior)
+ess <- ExpectedSampleSize(datadist, prior)
+
+obj <- function(lambda) {
+  composite({ess - lambda * pow})
+}
+```
+
+
+### Constraints
+
+The type one error rate is controlled at `r alpha` on the boundary of the 
+null hypothesis. Hence, the previous inequality can still be used.
+There is no constraint on power any more because power is part of the 
+objective utility function.
+
+
+### Initial Design
+
+The previous initial design with order $5$ is applied.
+
+
+### Optimization 
+
+The optimal design is computed for two values of $\lambda$: 100 and 200.
+
+```{r}
+opt_utility <- tibble(
+  lambda = c(100, 200)
+) %>%
+  mutate(
+    design = purrr::map(lambda, ~minimize(
+          obj(.),
+          subject_to(
+              toer_cnstr
+          ),
+          
+          initial_design = init_design(5), 
+          opts           = opts)) 
+)
+```
+
+
+### Test cases
+
+Firstly, it is checked whether the maximum number of iterations was not 
+exceeded in both flavours.
+```{r}
+opt_utility %>% 
+  transmute(
+      lambda, 
+      iterations = purrr::map_int(opt_utility$design, 
+                                  ~.$nloptr_return$iterations) ) %>%
+  {print(.); .} %>% 
+  {testthat::expect_true(all(.$iterations < opts$maxeval))}
+```
+
+Type one error rate control is tested for both designs by simulation and by 
+`adoptr`'s function `evaluate`.
+In addition, it is tested if the design with larger $\lambda$ (i.e.,
+stronger focus on power), shows the larger overall power.
+```{r}
+opt_utility %>% 
+  transmute(
+      lambda, 
+      toer      = map_dbl(design,
+                           ~evaluate(Power(datadist, PointMassPrior(.0, 1)), .$design) ),
+      toer_sim  = purrr::map(opt_utility$design, 
+                         ~sim_pr_reject(.[[1]], .0, datadist)$prob), 
+      power     = map_dbl(design,
+                          ~evaluate(Power(datadist, PointMassPrior(.3, 1)), .$design) ),
+      power_sim = purrr::map(opt_utility$design, 
+                         ~sim_pr_reject(.[[1]], .3, datadist)$prob) ) %>% 
+  unnest(., c(toer, toer_sim, power, power_sim)) %>% 
+  {print(.); .} %>% {
+  testthat::expect_true(all(.$toer     <= alpha * (1 + tol)))
+  testthat::expect_true(all(.$toer_sim <= alpha * (1 + tol)))
+  testthat::expect_lte(.$power[1], .$power[2]) }
+```
+
+
+
+Finally, the three designs computed so far are plotted together to allow 
+comparison.
+
+```{r, echo=FALSE}
+x1 <- seq(0, 3.5, by = .01)
+
+tibble(
+    type  = c(
+        "Power constraint", 
+        "Utility maximization with lambda = 100", 
+        "Utility maximization with lambda = 200" ), 
+    design = list(
+        opt %>% 
+            filter(order == 11) %>% 
+            pull(design) %>% 
+            .[[1]] %>% 
+            .$design, 
+        opt_utility %>% 
+            filter(lambda == 100) %>% 
+            pull(design) %>% 
+            .[[1]] %>% 
+            .$design, 
+        opt_utility %>% 
+            filter(lambda == 200) %>% 
+            pull(design) %>% 
+            .[[1]] %>% 
+            .$design ) ) %>% 
+    group_by(type) %>% 
+    do(
+        x1 = x1,
+        n  = adoptr::n(.$design[[1]], x1),
+        c2 = c2(.$design[[1]], x1),
+        CP = evaluate(ConditionalPower(datadist, prior), .$design[[1]], x1) ) %>% 
+    unnest(., cols = c(x1, n, c2, CP)) %>% 
+    mutate(
+        section = ifelse(
+            is.finite(c2), 
+            "continuation", 
+            ifelse(c2 == -Inf, "efficacy", "futility") ) ) %>% 
+    gather(variable, value, n, c2, CP) %>% 
+    ggplot(aes(x1, value, color = type)) +
+        geom_line(aes(group = interaction(section, type))) + 
+        facet_wrap(~variable, scales = "free_y") +
+        labs(y = "", x = expression(x[1])) +
+        scale_color_discrete("") +
+        theme_bw() +
+        theme(
+            panel.grid      = element_blank(),
+            legend.position = "bottom" )
+```
+
+
+## Variant V-3, n1-penalty {#variantV_3}
+
+In this variant, the influence of the regularization term `N1()` is investigated.
+
+### Objective
+
+In order to analyse the influence of `N1()`,
+a mixed criterion consisting of expected sample size under the point prior
+and $N1()$ is minimized.
+```{r}
+N1 <- N1()
+
+obj_n1 <- function(lambda) {
+  composite({ess + lambda * N1})
+}
+```
+
+
+### Constraints
+
+The inequalities from variant [V.1](#variantV_1) can still be used.
+
+
+
+### Initial Design
+
+The previous initial design with order $5$ is applied.
+This variant requires an upper bound on $c_2$.
+Otherwise, very large values for $c_2$ and large $n_2$-values would allow 
+appear to reduce $n_1$.
+
+```{r}
+ub_design <- get_upper_boundary_design(init_design(5))
+ub_design@c2_pivots <- rep(3, 5)
+```
+
+
+
+### Optimization 
+
+The optimal design is computed for two values of $\lambda$: 0.05 and 0.2.
+```{r}
+opt_n1 <- tibble(
+  lambda = c(0.05, 0.2)
+) %>%
+  mutate(
+    design = purrr::map(lambda, ~minimize(
+          obj_n1(.),
+          subject_to(
+              toer_cnstr,
+              pow_cnstr
+          ),
+          
+          initial_design        = init_design(5), 
+          upper_boundary_design = ub_design,
+          opts                  = opts)) 
+)
+```
+
+
+### Test cases
+
+We start testing if the optimization algorithm converged in both cases
+```{r}
+opt_n1 %>% 
+  transmute(
+      lambda, 
+      iterations = purrr::map_int(opt_n1$design, 
+                                  ~.$nloptr_return$iterations) ) %>%
+  {print(.); .} %>% 
+  {testthat::expect_true(all(.$iterations < opts$maxeval))}
+```
+
+
+Next, the error rate constraints on type one error rate and power are both 
+tested by simulation and by the `evaluate`-call.
+```{r}
+opt_n1 %>% 
+  transmute(
+      lambda, 
+      toer      = map_dbl(design,
+                           ~evaluate(Power(datadist, PointMassPrior(.0, 1)), .$design) ),
+      toer_sim  = purrr::map(opt_n1$design, 
+                         ~sim_pr_reject(.[[1]], .0, datadist)$prob), 
+      power     = map_dbl(design,
+                          ~evaluate(Power(datadist, PointMassPrior(.3, 1)), .$design) ),
+      power_sim = purrr::map(opt_n1$design, 
+                         ~sim_pr_reject(.[[1]], .3, datadist)$prob) ) %>% 
+  unnest(., cols = c(toer, toer_sim, power, power_sim)) %>% 
+  {print(.); .} %>% {
+  testthat::expect_true(all(.$toer      <= alpha * (1 + tol)))
+  testthat::expect_true(all(.$toer_sim  <= alpha * (1 + tol)))
+  testthat::expect_true(all(.$power     >= min_power * (1 - tol)))
+  testthat::expect_true(all(.$power_sim >= min_power * (1 - tol))) }
+```
+
+
+Since $n_1$ is penalized in both flavours that are computed in this variant,
+we expect a lower $n_1$ value as larger $\lambda$. 
+Furthermore, $n_1$ should be lower in both cases than in the unpenalized 
+situation regarded in variant [V.1](#variantV_1).
+Finally, these three designs are plotted together to allow graphical comparison.
+
+```{r, echo = FALSE}
+x1 <- seq(0, 3.5, by = .01)
+
+tibble(
+    type  = c(
+        "No Penalization on n_1", 
+        "Penalization on n_1 with lambda = 0.05", 
+        "Penalization on n_1 with lambda = 0.2" ), 
+    design = list(
+        opt %>% 
+            filter(order == 11) %>% 
+            pull(design) %>% 
+            .[[1]] %>% 
+            .$design, 
+        opt_n1 %>% 
+            filter(lambda == 0.05) %>% 
+            pull(design) %>% 
+            .[[1]] %>% 
+            .$design, 
+        opt_n1 %>% 
+            filter(lambda == 0.2) %>% 
+            pull(design) %>% 
+            .[[1]] %>% 
+            .$design ) ) %>% 
+   # test if n_1 decreases for increasing lambda
+    mutate(
+      n_1 = map_dbl(design, ~evaluate(N1, .))
+    ) %>% 
+  {
+    testthat::expect_true(all(diff(.$n_1) < 0))
+    print(.)
+   } %>%
+  # plot the designs
+    group_by(type) %>% 
+    do(
+        x1 = x1,
+        n  = adoptr::n(.$design[[1]], x1),
+        c2 = c2(.$design[[1]], x1),
+        CP = evaluate(ConditionalPower(datadist, prior), .$design[[1]], x1) ) %>% 
+    unnest(., cols = c(x1, n, c2, CP)) %>% 
+    mutate(
+        section = ifelse(
+            is.finite(c2), 
+            "continuation", 
+            ifelse(c2 == -Inf, "efficacy", "futility") ) ) %>% 
+    gather(variable, value, n, c2, CP) %>% 
+    ggplot(aes(x1, value, color = type)) +
+        geom_line(aes(group = interaction(section, type))) + 
+        facet_wrap(~variable, scales = "free_y") +
+        labs(y = "", x = expression(x[1])) +
+        scale_color_discrete("") +
+        theme_bw() +
+        theme(
+            panel.grid       = element_blank(),
+            legend.direction = "vertical",
+            legend.position  = "bottom" )
+```
+
+
+
+## Variant V-4, n2-penalty {#variantV_4}
+
+Here, we alter the situation from variant [V.3](#variantV_3) by not penalizing
+$n_1$, but the average stage-two sample size $n_2$. 
+This can be done by means of the function `AverageN2()`.
+
+### Objective
+
+As in variant [V.3](#variantV_3), a mixed criterion is minimized.
+Here, it consists of expected sample size under the point prior and the
+average of $n_2$.
+```{r}
+avn2 <- AverageN2()
+
+obj_n2 <- function(lambda) {
+  composite({ess + lambda * avn2})
+}
+```
+
+
+### Constraints
+
+The inequalities from variant [V.1](#variantV_1) can still be used.
+
+
+
+### Initial Design
+
+The previous initial design with order $8$ is applied.
+However, this case requires the definition of an upper-bound for $c_2$.
+Otherwise, very small $n_2$-values and very large $c_2$-values would
+appear close to the early-futility-stop boundary in order to 
+decrease the average $n_2$.
+
+```{r}
+ub_design <- get_upper_boundary_design(init_design(8))
+ub_design@c2_pivots <- rep(2.5, 8)
+```
+
+
+### Optimization 
+
+The optimal design is computed for two values of $\lambda$: 0.01 and 0.1.
+
+```{r}
+opt_n2 <- tibble(
+  lambda = c(0.01, 0.1)
+) %>%
+  mutate(
+    design = purrr::map(lambda, ~minimize(
+          obj_n2(.),
+          subject_to(
+              toer_cnstr,
+              pow_cnstr
+          ),
+          
+          initial_design = init_design(8), 
+          upper_boundary_design = ub_design,
+          opts           = opts)) 
+)
+```
+
+
+### Test cases
+
+As first step, we check if the maximum number of iterations was not exceeded
+in both cases.
+```{r}
+opt_n2 %>% 
+  transmute(
+      lambda, 
+      iterations = purrr::map_int(opt_n2$design, 
+                                  ~.$nloptr_return$iterations) ) %>%
+  {print(.); .} %>% 
+  {testthat::expect_true(all(.$iterations < opts$maxeval))}
+```
+
+
+As second step, the type one error rate and power restrictions are tested
+by simulation and by calling `evaluate`.
+```{r}
+opt_n2 %>% 
+  transmute(
+      lambda, 
+      toer      = map_dbl(design,
+                           ~evaluate(Power(datadist, PointMassPrior(.0, 1)), .$design) ),
+      toer_sim  = purrr::map(opt_n2$design, 
+                         ~sim_pr_reject(.[[1]], .0, datadist)$prob), 
+      power     = map_dbl(design,
+                          ~evaluate(Power(datadist, PointMassPrior(.3, 1)), .$design) ),
+      power_sim = purrr::map(opt_n2$design, 
+                         ~sim_pr_reject(.[[1]], .3, datadist)$prob) ) %>% 
+  unnest(., c(toer, toer_sim, power, power_sim)) %>% 
+  {print(.); .} %>% {
+  testthat::expect_true(all(.$toer      <= alpha * (1 + tol)))
+  testthat::expect_true(all(.$toer_sim  <= alpha * (1 + tol)))
+  testthat::expect_true(all(.$power     >= min_power * (1 - tol)))
+  testthat::expect_true(all(.$power_sim >= min_power * (1 - tol))) }
+```
+
+Due to increasing penalization, it is assumed that the optimal design 
+computed in variant [V.1](#variantV_1) (no penalization) shows a larger
+average $n_2$ than the optimal penalized design with $\lambda = 0.01$
+and this shows a larger average $n_2$ than the optimal design
+with $\lambda = 0.1$.
+Additionally, these three designs are depicted in a joint plot.
+
+```{r, echo = FALSE}
+x1 <- seq(0, 3.5, by = .01)
+
+tibble(
+    type  = c(
+        "No Penalization on AvN2", 
+        "Penalization on AvN2 with lambda = 0.01", 
+        "Penalization on AvN2 with lambda = 0.1" ), 
+    design = list(
+        opt %>% 
+            filter(order == 11) %>% 
+            pull(design) %>% 
+            .[[1]] %>% 
+            .$design, 
+        opt_n2 %>% 
+            filter(lambda == 0.01) %>% 
+            pull(design) %>% 
+            .[[1]] %>% 
+            .$design, 
+        opt_n2 %>% 
+            filter(lambda == 0.1) %>% 
+            pull(design) %>% 
+            .[[1]] %>% 
+            .$design ) ) %>% 
+   # test if average_n2 decreases for increasing lambda
+    mutate(
+      average_n2 = map_dbl(design, ~evaluate(avn2, .))
+    ) %>% 
+  {
+    testthat::expect_true(all(diff(.$average_n2) < 0))
+    print(.)
+   } %>%
+  # plot the designs
+    group_by(type) %>% 
+    do(
+        x1 = x1,
+        n  = adoptr::n(.$design[[1]], x1),
+        c2 = c2(.$design[[1]], x1),
+        CP = evaluate(ConditionalPower(datadist, prior), .$design[[1]], x1) ) %>% 
+    unnest(., cols = c(x1, n, c2, CP)) %>% 
+    mutate(
+        section = ifelse(
+            is.finite(c2), 
+            "continuation", 
+            ifelse(c2 == -Inf, "efficacy", "futility") ) ) %>% 
+    gather(variable, value, n, c2, CP) %>% 
+    ggplot(aes(x1, value, color = type)) +
+        geom_line(aes(group = interaction(section, type))) + 
+        facet_wrap(~variable, scales = "free_y") +
+        labs(y = "", x = expression(x[1])) +
+        scale_color_discrete("") +
+        theme_bw() +
+        theme(
+            panel.grid       = element_blank(),
+            legend.direction = "vertical",
+            legend.position  = "bottom" )
+```

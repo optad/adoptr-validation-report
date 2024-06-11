@@ -1,0 +1,555 @@
+--- 
+title: "Validation Report for **adoptr** package"
+author: "Kevin Kunzmann & Maximilian Pilz"
+date: "`r Sys.Date()`"
+bibliography:
+- book.bib
+- packages.bib
+description: This is an automatically generated validation report for the **adoptr** R
+  package published via **bookdown**.
+documentclass: book
+link-citations: yes
+site: bookdown::bookdown_site
+biblio-style: apalike
+github-repo: optad/adoptr-validation-report
+output:
+  
+    bookdown::gitbook:
+      css: style.css
+      config:
+        toc:
+          collapse: section
+          scroll_highlight: yes
+          before: |
+            <li><a href="./">Validation Report for adoptr Package</a></li>
+          after: |
+            <li><a href="https://github.com/rstudio/bookdown" target="blank">Published with bookdown</a></li>
+        download: ["pdf"]
+        edit: https://github.com/optad/adoptr-validation-report/edit/master/%s
+        sharing:
+          facebook: no
+          github: yes
+          
+    bookdown::pdf_book:
+      includes:
+        in_header: preamble.tex
+      latex_engine: xelatex
+      citation_package: natbib
+      keep_tex: yes
+---
+
+
+# Introduction
+
+This work is licensed under the [CC-BY-SA 4.0 license](https://creativecommons.org/licenses/by-sa/4.0/deed.en)
+
+
+
+## Preliminaries
+
+R package validation for regulatory environments can be a 
+tedious endeavour.
+The authors firmly believe that under the current regulation,
+there is no such thing as a 'validated R package':
+validation is by definition a process conducted by the *user*.
+This validation report merely aims at facilitating 
+validation of **[adoptr](https://github.com/optad/adoptr)** as 
+much as possible.
+No warranty whatsoever as to the correctness of **adoptr** nor the
+completeness of the validation report are given by the authors.
+
+We assume that the reader is familiar with the notation an theoretical
+background of **adoptr**.
+Otherwise, the following resources might be of help:
+
+* **adoptr** online documentation at https://optad.github.io/adoptr/
+* paper on the theoretical background of the core **adoptr** functionality [@variational]
+* a general overview on adaptive designs is given in [@Bauer2015] 
+* a more extensive treatment of the subject in [@Wassmer2016].
+
+
+
+## Scope
+
+**adoptr** itself already makes extensive use of unittesting to 
+ensure correctness of all implemented functions. 
+Yet, due to constraints on the build-time for an R package, 
+the range of scenarios covered in the unittests of **adoptr** is 
+rather limited.
+Furthermore, the current R unittesting framework does not permit 
+an easy generation of a human-readable report of the test cases
+to ascertain coverage and test quality.
+
+Therefore, **adoptr** splits testing in two parts: technical 
+correctness is ensured via an extensive unittesting suit in **adoptr**
+itself (aiming to maintain a 100% code coverage).
+The validation report, however, runs through a wide range of possible
+application scenarios and ensures plausibility of results as well
+as consistency with existing methods wherever possible.
+The report itself is implemented as a collection of Rmarkdown documents
+allowing to show both the underlying code as well as the corresponding 
+output in a human-readable format.
+
+The online version of the report is dynamically re-generated on a 
+weekly basis based on the respective 
+most current version of **adoptr** on CRAN.
+The latest result of these builds is available at 
+https://optad.github.io/adoptr-validation-report/.
+To ensure early warning in case of any test-case failures, 
+formal tests are implemented using the **testthat** package 
+[@R-testthat].
+I.e., the combination of using a unittesting framework, a continuous 
+integration, and continuous deployment service leads to an always 
+up-to-date validation report (build on the current R release on Linux).
+Any failure of the integrated formal tests will cause the build status
+of the validation report to switch from 'passing' to 'failed' and
+the respective maintainer will be notified immediately.
+
+
+
+### Validating a local installation of adoptr
+
+Note that, strictly speaking, the online version of the validation
+report only provides evidence of the correctness on the respective 
+Travis-CI cloud virtual machine infrastructure using the respective 
+most recent release of R and the most recent versions of the 
+dependencies available on CRAN.
+In some instances it might therefore be desireable to conduct a
+local validaton of **adoptr**.
+
+To do so, one should install **adoptr** with the `INSTALL_opts` option
+to include tests and invoke the test suit locally via
+```r
+install.packages("adoptr", INSTALL_opts = c("--install-tests"))
+tools::testInstalledPackage("adoptr", types = c("examples", "tests"))
+```
+Upon passing the test suit successfully, the validation report
+can be build locally.
+To do so, first clone the entire source directory and switch
+to the newly created folder
+```bash
+git clone https://github.com/optad/adoptr-validation-report.git
+cd adoptr-validation-report
+```
+Make sure that all packages requied for building the report are
+available, i.e., install all dependencies listed in the top-level
+`DESCRIPTION` file, e.g.,
+```r
+install.packages(c(
+    "adoptr", 
+    "tidyverse", 
+    "bookdown", 
+    "rpact", 
+    "testthat", 
+    "pwr" ) )
+```
+The book can then be build using the terminal command
+```bash
+Rscript -e 'bookdown::render_book("index.Rmd", output_format = "all")'
+```
+or directly from R via 
+```r
+bookdown::render_book("index.Rmd", output_format = "all")
+```
+This produces a new folder `_book` with the html and pdf versions
+of the report.
+
+
+
+## Validation Scenarios
+
+
+
+### [Scenario I: Large effect, point prior](#scenarioI)
+
+This is the default scenario. 
+
+* **Data distribution:** Two-armed trial with normally distributed test statistic
+* **Prior:** $\delta\sim\textbf{1}_{\delta=0.4}$
+* **Null hypothesis:** $\mathcal{H}_0:\delta \leq 0$
+
+
+#### [Variant I.1: Minimizing Expected Sample Size under the Alternative](#variantI_1)
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\,|\,\delta=0.4\big]$
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.4\big] \geq 0.8$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.0\big] \leq 0.025$
+    3. Three variants: two-stage, group-sequential, one-stage. 
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. All three **adoptr** variants (two-stage, group-sequential, one-stage) 
+        comply with constraints. Internally validated by testing vs. simulated 
+        values of the power curve at respective points.
+    3.  Is $n()$ of the optimal two-stage design monotonously decreasing on
+        continuation area? 
+    4. $ESS$ of optimal two-stage design is lower than $ESS$ of optimal
+        group-sequential one and that is in turn lower than the one of the
+        optimal one-stage design.
+    5. $ESS$ of optimal group-sequential design is lower than $ESS$ of 
+        externally computed group-sequential design using the [rpact](https://rpact.org/) package.
+    6. Are the $ESS$ values obtained from simulation the same as the ones 
+        obtained by using numerical integration via `adoptr::evaluate`?
+
+
+#### [Variant I.2: Minimizing Expected Sample Size under the Null Hypothesis](#variantI_2)
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\,|\,\color{red}{\delta=0.0}\big]$
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.4\big] \geq 0.8$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.0\big] \leq 0.025$
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. Validate constraint compliance by testing vs. simulated 
+        values of the power curve at respective points.
+    3. $n()$ of optimal design is monotonously increasing on continuation area.
+    4. $ESS$ of optimal two-stage design is lower than $ESS$ of externally 
+        computed group-sequential design using the [rpact](https://rpact.org/) package.
+    5. Are the $ESS$ values obtained from simulation the same as the ones 
+        obtained by using numerical integration via `adoptr::evaluate`?
+
+
+
+#### [Variant I.3: Condtional Power Constraint](#variantI_3)
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\,|\,\delta=0.4\big]$
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.4\big] \geq 0.8$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.0\big] \leq 0.025$
+    3. $CP := \color{red}{\boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.4, X_1 = x_1\big] \geq 0.7}$ for all $x_1\in(c_1^f, c_1^e)$
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. Check $Power$ and $TOER$ constraints with simulation.
+        Check $CP$ constraint on 25 different values of $x_1$ in 
+        $[c_1^f, c_1^e]$
+    3. Are the $CP$ values at the 25 test-pivots obtained from simulation the 
+        same as the ones obtained by using numerical integration via 
+        `adoptr::evaluate`?
+    4. Is $ESS$ of optimal two-stage design with $CP$ constraint higher than 
+        $ESS$ of optimal two-stage design without this constraint?
+        
+        
+
+
+
+
+### [Scenario II: Large effect, Gaussian prior](#scenarioII)
+
+Similar scope to Scenario I, but with a continuous Gaussian prior on $\delta$.
+
+
+* **Data distribution:** Two-armed trial with normally distributed test statistic
+* **Prior:** $\delta\sim\mathcal{N}(0.4, .3)$
+* **Null hypothesis:** $\mathcal{H}_0:\delta \leq 0$
+
+
+#### [Variant II.1: Minimizing Expected Sample Size](#variantII_1)
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\big]$
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta> 0.0\big] \geq 0.8$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.0\big] \leq 0.025$
+    3. Three variants: two-stage, group-sequential, one-stage. 
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. All designs comply with type one error rate constraints (tested via
+      simulation).
+    3. $ESS$ of optimal two-stage design is lower than $ESS$ of optimal
+        group-sequential one and that is in turn lower than the one of the
+        optimal one-stage design.
+
+
+
+#### [Variant II.2: Minimizing Expected Sample Size under the Null hypothesis](#variantII_2)
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\,|\,\color{red}{\delta\leq 0}\big]$
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta> 0.0\big] \geq 0.8$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.0\big] \leq 0.025$
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. Does the design comply with $TOER$ constraint (via simulation)?
+    3. Is $ESS$ lower than expected sample size under the null hypothesis 
+      for the optimal two stage design from Variant II-1?
+      
+      
+
+
+#### [Variant II.3: Condtional Power Constraint](#variantII_3)
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\big]$
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta>0.0\big] \geq 0.8$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.0\big] \leq 0.025$
+    3. $CP := \color{red}{\boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta> 0.0, X_1 = x_1\big] \geq 0.7}$
+       for all $x_1\in(c_1^f, c_1^e)$
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. Check $TOER$ constraint with simulation.
+    3. Check $CP$ constraint on three different values of $x_1$ in 
+        $(c_1^f, c_1^e)$
+    4. Is $ESS$ of optimal two-stage design with $CP$ constraint higher than 
+        $ESS$ of optimal two-stage design without the constraint?
+
+
+      
+      
+      
+
+### [Scenario III: Large effect, uniform prior](#scenarioIII)
+
+* **Data distribution:** Two-armed trial with normally distributed test statistic
+* **Prior:** sequence of uniform distributions
+$\delta\sim\operatorname{Unif}(0.4 - \Delta_i, 0.4 + \Delta_i)$
+around $0.4$ with $\Delta_i=(3 - i)/10$ for $i=0\ldots 3$. 
+I.e., for $\Delta_3=0$ reduces to a point prior on $\delta=0.4$. 
+* **Null hypothesis:** $\mathcal{H}_0:\delta \leq 0$
+
+
+#### [Variant III.1: Convergence under Prior Concentration](#variantIII_1)
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\big]$
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta>0.0\big] \geq 0.8$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.0\big] \leq 0.025$
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. Simulated type one error rate is compared to $TOER$ constraint for each
+      design.
+    3. $ESS$ decreases with prior variance.
+    
+Additionally, the designs are compared graphically. 
+Inspect the plot to see convergence pattern.
+
+
+
+
+
+### [Scenario IV: Smaller effect size, larger trials](#scenarioIV)
+
+
+
+#### [Variant IV.1: Minimizing Expected Sample Size under the Alternative](#variantIV_1)
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\,|\,\delta=0.2\big]$
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.2\big] \geq 0.8$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.0\big] \leq 0.025$
+    3. Three variants: two-stage, group-sequential, one-stage. 
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. All three adoptr variants (two-stage, group-sequential, one-stage) 
+        comply with constraints. Internally validated by testing vs. simulated 
+        values of the power curve at respective points.
+    3. $ESS$ of optimal two-stage design is lower than $ESS$ of optimal
+        group-sequential one and that is in turn lower than the one of the
+        optimal one-stage design.
+    4. $ESS$ of optimal group-sequential design is lower than $ESS$ of 
+        externally computed group-sequential design using the [rpact](https://rpact.org/) package.
+    5. Are the $ESS$ values obtained from simulation the same as the ones 
+        obtained by using numerical integration via `adoptr::evaluate`?
+    6. Is $n()$ of the optimal two-stage design monotonously decreasing on
+        continuation area? 
+
+
+
+#### [Variant IV.2: Increasing Power](#variantIV_2)
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\,|\,\delta=0.2\big]$
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.2\big] \geq \color{red}{0.9}$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.0\big] \leq 0.025$
+    3. Three variants: two-stage, group-sequential, one-stage. 
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. Does the design respect all constraints (via simulation)?
+    3. $ESS$ of optimal two-stage design is lower than $ESS$ of optimal
+        group-sequential one and that is in turn lower than the one of the
+        optimal one-stage design.
+    4. $ESS$ of optimal group-sequential design is lower than $ESS$ of 
+        externally computed group-sequential design using the [rpact](https://rpact.org/) package.
+    5. Are the $ESS$ values obtained from simulation the same as the ones 
+        obtained by using numerical integration via `adoptr::evaluate`?
+    6. Is $n()$ of the optimal two-stage design monotonously decreasing on
+        continuation area? 
+
+
+
+
+#### [Variant IV.3: Increasing Maximal Type One Error Rate](#variantIV_3)
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\,|\,\delta=0.2\big]$
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.2\big] \geq 0.8$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.0\big] \leq \color{red}{0.05}$
+    3. Three variants: two-stage, group-sequential, one-stage. 
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. Does the design respect all constraints (via simulation)?
+    3. $ESS$ of optimal two-stage design is lower than $ESS$ of optimal
+        group-sequential one and that is in turn lower than the one of the
+        optimal one-stage design.
+    4. $ESS$ of optimal group-sequential design is lower than $ESS$ of 
+        externally computed group-sequential design using the [rpact](https://rpact.org/) package.
+    5. Are the $ESS$ values obtained from simulation the same as the ones 
+        obtained by using numerical integration via `adoptr::evaluate`?
+    6. Is $n()$ of the optimal two-stage design monotonously decreasing on
+        continuation area? 
+
+
+
+
+### [Scenario V: Single-arm design, medium effect size](#scenarioV)
+
+* **Data distribution:** \textcolor{red}{One-armed} trial with normally distributed test statistic
+* **Prior:** $\delta\sim\delta_{0.3}$
+* **Null hypothesis:** $\mathcal{H}_0:\delta \leq 0$
+
+
+#### [Variant V.1: Sensitivity to Integration Order](#variantV_1)
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\,|\,\delta=0.3\big]$
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\color{red}{\delta=0.3}\big] \geq 0.8$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.0\big] \leq 0.025$
+    3. Three variants: integration order 5, 8, 11 two-stage designs. 
+* **Formal tests:**
+    1. Do all designs converge within the respective iteration limit?
+    2. Do all designs respect all constraints (via simulation)?
+
+    
+#### [Variant V.2: Utility Maximization](#variantV_2)
+
+* **Objective:** $\lambda\, Power - ESS := \lambda\,  \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.3\big] - \boldsymbol{E}\big[n(X_1)\,|\,\delta=0.3\big].$
+  for $\lambda = 100$ and $200$
+* **Constraints:** 
+    1. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.0\big] \leq 0.025$
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. Do both designs respect the type one error rate constraint (via simulation)?
+    3. Is the power of the design with larger $\lambda$ larger?
+    
+    
+#### [Variant V.3: $n_1$ penalty](#variantV_3)
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\,|\,\delta=0.3\big] + \lambda \, n_1$ 
+     for $\lambda = 0.05$ and $0.2$.
+* **Constraints:** 
+    1. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.0\big] \leq 0.025$
+    2. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.3\big] \geq 0.8$
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. Do both designs respect the type one error rate
+      and power constraints (via simulation)?
+    3. Is $n_1$ for the optimal design smaller than the order-5 design in V.1?
+
+
+#### [Variant V.4: $n_2$ penalty](#variantV_4)
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\,|\,\delta=0.3\big] + \lambda$ `AverageN2`
+     for $\lambda = 0.01$ and $0.1$.
+* **Constraints:** 
+    1. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.0\big] \leq 0.025$
+    2. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.3\big] \geq 0.8$
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. Do both designs respect the type one error rate and power
+      constraints (via simulation)?
+    3. Is the `AverageN2` for the optimal design smaller than for the order-5 
+    design in V.1?
+
+
+
+
+### [Scenario VI: Binomial distribution](#scenarioVI)
+
+This scenario investigates the implementation of the binomial distribution.
+
+* **Data distribution:** Two-armed trial with binomial distributed outcomes.
+Thus $\delta := p_E - p_C$ refers to the rate difference here.
+The control rate is assumed to equal $p_C = 0.3$.
+* **Prior:** $\delta\sim\textbf{1}_{\delta=0.2}$
+* **Null hypothesis:** $\mathcal{H}_0:\delta \leq 0$
+
+
+#### [Variant VI.1: Minimizing Expected Sample Size under the Alternative](#variantVI_1)
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\,|\,\delta=0.2\big]$
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.2\big] \geq 0.9$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.0\big] \leq 0.025$
+    3. Three variants: two-stage, group-sequential, one-stage. 
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. All three **adoptr** variants (two-stage, group-sequential, one-stage) 
+        comply with constraints. Internally validated by testing vs. simulated 
+        values of the power curve at respective points.
+    3. $ESS$ of optimal two-stage design is lower than $ESS$ of optimal
+        group-sequential one and that is in turn lower than the one of the
+        optimal one-stage design.
+    4. $ESS$ of optimal group-sequential design is lower than $ESS$ of 
+        externally computed group-sequential design using the [rpact](https://rpact.org/) package.
+    5. Are the $ESS$ values obtained from simulation the same as the ones 
+        obtained by using numerical integration via `adoptr::evaluate`?
+
+
+
+## Technical Setup
+
+All scenarios are run in a single, shared R session.
+Required packages are loaded here,
+the random seed is defined and set centrally, and the default number
+of iteration is increased to make sure that all scenarios 
+converge properly.
+Additionally R scripts with convenience functions are sourced here as well.
+There are three additional functions for this report.
+`rpact_design` creates a two-stage design via the package **rpact** [@R-rpact]
+in the notation of **adoptr**.
+`sim_pr_reject` and `sim_n` allow to simulate rejection probabilities
+and expected sample sizes respectively by the **adoptr** routine `simulate`.
+Furthermore, global tolerances for the validation are set. 
+For error rates, a relative deviation of $1\%$ from the target value is 
+accepted. 
+(Expected) Sample sizes deviations are more liberally accepted up to an 
+absolute deviation of $0.5$. 
+```{r setup, results='hide'}
+library(adoptr)
+library(tidyverse)
+library(rpact)
+library(pwr)
+library(testthat)
+library(tinytex)
+
+# load custom functions in folder subfolder '/R'
+for (nm in list.files("R", pattern = "\\.[RrSsQq]$"))
+   source(file.path("R", nm))
+
+# define seed value
+seed  <- 42
+
+# define absolute tolerance for error rates
+tol   <- 0.01
+
+# define absolute tolerance for sample sizes
+tol_n <- 0.5
+
+# define custom tolerance and iteration limit for nloptr
+opts = list(
+    algorithm = "NLOPT_LN_COBYLA",
+    xtol_rel  = 1e-5,
+    maxeval   = 100000
+)
+```
