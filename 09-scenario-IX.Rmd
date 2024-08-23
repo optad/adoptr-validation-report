@@ -1,0 +1,156 @@
+# Scenario IX: time-to-event endpoints {#scenarioIX}
+
+## Details
+In this scenario, we visit a different scenario: Instead of continuous or binary endpoints, we now consider time-to-event endpoints. Therefore, we conduct a log-rank test, for which `adoptr` provides the normal approximation of the test statistic. In order to obtain a one-parametric statistic, we need to fix the event probability $d$ during the trial. We assume that a hazard ratio $\theta>1$ implies favorable results. The null-hypothesis is given by $\mathcal{H}_0:\theta\leq 1$. In both of the following two scenarios, we assume a constant event rate of $d=0.7$ and the type one error should be bounded by $\alpha<0.025$ and a power of $0.8$ is necessary. 
+Attention: `adoptr` calculates the number of necessary events, not the sample size. Thus, e.g. the function `ExpectedSampleSize` does not really represent the expected sample size, but the expected number of events. To make a clear distinction, one can use `ExpectedNumberOfEvents` instead.
+The sample size can be calculated by dividing the number of events by the event rate. 
+
+```{r}
+datadist <- Survival(0.7, two_armed = TRUE)
+H_0 <- PointMassPrior(1.0, 1)
+alpha <- 0.025
+min_power <- 0.8
+```
+
+## Variant IX-1: Minimizing expected number of events under point prior
+
+Under the alternative, we us a hazard ratio of $\theta=1.4$ for the point prior of the alternative. 
+
+```{r}
+prior <- PointMassPrior(1.4, 1)
+
+toer_cnstr <- Power(datadist, H_0) <= alpha
+pow_cnstr <- Power(datadist, prior) >= min_power
+```
+
+### Objective
+The expected number of events under the alternative is minimized.
+```{r}
+ess <- ExpectedNumberOfEvents(datadist, prior)
+```
+
+### Constraints
+No additional constraints besides type one and type two error are considered in this variant. 
+
+### Initial Design
+
+The initial group sequential, two-stage and one-stage designs are chosen heuristically. 
+
+```{r}
+order <- 7L
+# data frame of initial designs 
+tbl_designs <- tibble(
+    type    = c("one-stage", "group-sequential", "two-stage"),
+    initial = list(
+        OneStageDesign(150, 2.0, event_rate = 0.7),
+        GroupSequentialDesign(75, 0.8, 2.3, 170, 
+                              c2_pivots=c(0.9, 1.1, 1.3, 1.5, 1.7, 1.9, 2.1), 
+                              event_rate = 0.7),
+        TwoStageDesign(75, 0.8, 2.3, 
+                       c(220, 200, 170, 150, 140, 130, 120), 
+                       c2_pivots = c(0.9, 1.1, 1.3, 1.5, 1.7, 1.9, 2.1), 
+                       event_rate = 0.7)) )
+```
+
+The order of the integration is set to 7.
+
+### Optimization
+
+```{r}
+tbl_designs <- tbl_designs %>% 
+    mutate(
+       optimal = purrr::map(initial, ~minimize(
+         
+          ess,
+          subject_to(
+              toer_cnstr,
+              pow_cnstr
+          ),
+          
+          initial_design = ., 
+          opts           = opts)) )
+```
+
+### Test cases
+
+We first check that the maximum number of iterations was not reached.
+
+```{r}
+tbl_designs %>% 
+  transmute(
+      type, 
+      iterations = purrr::map_int(tbl_designs$optimal, 
+                                  ~.$nloptr_return$iterations) ) %>%
+  {print(.); .} %>% 
+  {testthat::expect_true(all(.$iterations < opts$maxeval))}
+```
+
+Besides, we check whether the type one error was not exceeded and the necessary power is reached.
+
+```{r}
+tbl_designs %>% 
+  transmute(
+      type, 
+      toer  = purrr::map(tbl_designs$optimal, 
+                         ~sim_pr_reject(.[[1]], 1.0, datadist)$prob), 
+      power = purrr::map(tbl_designs$optimal, 
+                         ~sim_pr_reject(.[[1]], 1.4, datadist)$prob) ) %>% 
+  unnest(., cols = c(toer, power)) %>% 
+  {print(.); .} %>% {
+  testthat::expect_true(all(.$toer  <= alpha * (1 + tol)))
+  testthat::expect_true(all(.$power >= min_power * (1 - tol))) }
+```
+
+Since the degrees of freedom of the three design classes are ordered as
+'two-stage' > 'group-sequential' > 'one-stage',
+the expected sample sizes (under the alternative) should be ordered 
+in reverse ('two-stage' smallest).
+Additionally, expected sample sizes under both null and alternative
+are computed both via `evaluate()` and simulation-based.
+
+```{r}
+ess0 <- ExpectedNumberOfEvents(datadist, H_0)
+
+tbl_designs %>% 
+    mutate(
+        ess      = map_dbl(optimal,
+                           ~evaluate(ess, .$design) ),
+        ess_sim  = map_dbl(optimal,
+                           ~sim_n(.$design, 1.4, datadist)$n ),
+        ess0     = map_dbl(optimal,
+                           ~evaluate(ess0, .$design) ),
+        ess0_sim = map_dbl(optimal,
+                           ~sim_n(.$design, 1.0, datadist)$n ) ) %>% 
+    {print(.); .} %>% {
+    # sim/evaluate same under alternative?
+    testthat::expect_equal(.$ess, .$ess_sim, 
+                           tolerance = tol_n,
+                           scale = 1)
+    # sim/evaluate same under null?
+    testthat::expect_equal(.$ess0, .$ess0_sim, 
+                           tolerance = tol_n,
+                           scale = 1)
+    # monotonicity with respect to degrees of freedom
+    testthat::expect_true(all(diff(.$ess) < 0)) }
+```
+
+The expected sample size under the alternative must be lower or equal than
+the expected sample size of the initial `rpact` group-sequential design that
+is based on the inverse normal combination test.
+
+```{r}
+testthat::expect_lte(
+  evaluate(ess, 
+             tbl_designs %>% 
+                filter(type == "group-sequential") %>% 
+                dplyr::pull(optimal) %>% 
+                .[[1]]  %>%
+                .$design ),
+    evaluate(ess, 
+             tbl_designs %>% 
+                filter(type == "group-sequential") %>% 
+                dplyr::pull(initial) %>% 
+                .[[1]] ) )
+```
+
+

@@ -33,6 +33,16 @@ rpact_design <- function(
             design_rp, groups = 2, normalApproximation = TRUE,
             pi1 = dist@rate_control, pi2 = dist@rate_control + effect
             )
+    } else if (is(dist,"Student")) {
+      res <- rpact::getSampleSizeMeans(
+        design_rp, normalApproximation = FALSE, alternative = effect * ifelse(
+          two_armed, 1, sqrt(2)
+        )
+      )
+    } else if (is(dist,"Survival")){
+      res <- rpact::getSampleSizeSurvival(
+        design_rp, hazardRatio = hazardratio
+      )
     } else {
         break("Specified data distribution does not exist in adoptr!")
     }

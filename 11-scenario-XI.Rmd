@@ -1,0 +1,156 @@
+# Scenario XI: F-Distribution {#scenarioXI}
+
+## Details
+
+In this scenario, we compute the necessary sample size for a one-way ANOVA with $k$ groups. The resulting test statistic is $F$-distributed with $k-1$ and $nk-k$ degrees of freedom, where $n$ stands for the sample size per group.
+
+## Variant XI-1: ANOVA
+
+### Setup
+
+Under the alternative, we assume a mean of $0.0$ in the first group, $0.4$ in the second group and $0.2$ in the third group.
+
+```{r}
+means <- c(0, 0.4, 0.2)
+theta <- get_tau_ANOVA(means)
+
+datadist <- ANOVA(3)
+H_0 <- PointMassPrior(0, 1)
+prior <- PointMassPrior(theta, 1)
+
+alpha <- 0.05
+min_power <- 0.8
+
+toer_cnstr <- Power(datadist, H_0)  <= alpha
+pow_cnstr <- Power(datadist, prior) >= min_power
+```
+
+### Objective
+
+We want to minimize the expected sample size under the alternative.
+```{r}
+ess <- ExpectedSampleSize(datadist, prior)
+```
+
+### Initial Design
+
+The initial designs are chosen via the in-built function to create initial designs.
+
+```{r}
+tbl_designs <- tibble(
+    type    = c("one-stage", "group-sequential", "two-stage"),
+    initial = list(
+        get_initial_design(theta, alpha, 1 - min_power, 
+                           "one-stage", dist = datadist),
+        get_initial_design(theta, alpha, 1 - min_power, 
+                           "group-sequential", dist = datadist),
+        get_initial_design(theta, alpha, 1 - min_power, 
+                           "two-stage", dist = datadist) ))
+```
+
+### Optimization
+
+```{r}
+tbl_designs <- tbl_designs %>% 
+    mutate(
+       optimal = purrr::map(initial, ~minimize(
+         
+          ess,
+          subject_to(
+              toer_cnstr,
+              pow_cnstr 
+          ),
+          
+          initial_design = ., 
+          opts           = opts)) )
+```
+
+### Test Cases
+
+We first verify that in none of the three cases, the maximal number of iterations was exceeded.
+```{r}
+tbl_designs %>% 
+  transmute(
+      type, 
+      iterations = purrr::map_int(tbl_designs$optimal, 
+                                  ~.$nloptr_return$iterations) ) %>%
+  {print(.); .} %>% 
+  {testthat::expect_true(all(.$iterations < opts$maxeval))}
+```
+
+We then check via simulations of the test statistic, that the type I error and power constraints are fulfilled.
+
+```{r}
+tbl_designs %>% 
+  transmute(
+      type, 
+      toer  = purrr::map(tbl_designs$optimal, 
+                         ~sim_pr_reject(.[[1]], .0, datadist)$prob), 
+      power = purrr::map(tbl_designs$optimal, 
+                         ~sim_pr_reject(.[[1]], theta , datadist)$prob) ) %>% 
+  unnest(., cols = c(toer, power)) %>% 
+  {print(.); .} %>% {
+  testthat::expect_true(all(.$toer  <= alpha * (1 + tol)))
+  testthat::expect_true(all(.$power >= min_power * (1 - tol))) }
+```
+
+The sample size function $n_2$ should be monotonously decreasing.
+
+```{r}
+testthat::expect_true(
+    all(diff(
+        # get optimal two-stage design n2 pivots
+        tbl_designs %>% filter(type == "two-stage") %>%
+           {.[["optimal"]][[1]]$design@n2_pivots} 
+        ) < 0) )
+```
+
+Since the degrees of freedom of the three design classes are ordered as
+'two-stage' > 'group-sequential' > 'one-stage',
+the expected sample sizes (under the alternative) should be ordered 
+in reverse ('two-stage' smallest).
+Additionally, expected sample sizes under both null and alternative
+are computed both via `evaluate()` and simulation-based.
+
+```{r}
+ess0 <- ExpectedSampleSize(datadist, H_0)
+
+tbl_designs %>% 
+    mutate(
+        ess      = map_dbl(optimal,
+                           ~evaluate(ess, .$design) ),
+        ess_sim  = map_dbl(optimal,
+                           ~sim_n(.$design, theta, datadist)$n ),
+        ess0     = map_dbl(optimal,
+                           ~evaluate(ess0, .$design) ),
+        ess0_sim = map_dbl(optimal,
+                           ~sim_n(.$design, .0, datadist)$n ) ) %>% 
+    {print(.); .} %>% {
+    # sim/evaluate same under alternative?
+    testthat::expect_equal(.$ess, .$ess_sim, 
+                           tolerance = tol_n,
+                           scale = 1)
+    # sim/evaluate same under null?
+    testthat::expect_equal(.$ess0, .$ess0_sim, 
+                           tolerance = tol_n,
+                           scale = 1)
+    # monotonicity with respect to degrees of freedom
+    testthat::expect_true(all(diff(.$ess) < 0)) }
+```
+
+The expected sample size under the alternative of the optimized designs should be lower than the sample size of the initial designs.
+
+```{r}
+testthat::expect_lte(
+  evaluate(ess, 
+             tbl_designs %>% 
+                dplyr::pull(optimal) %>% 
+                .[[1]]  %>%
+                .$design ),
+    evaluate(ess, 
+             tbl_designs %>% 
+                dplyr::pull(initial) %>% 
+                .[[1]] ) )
+```
+
+

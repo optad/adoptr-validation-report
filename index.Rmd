@@ -1,6 +1,6 @@
 --- 
 title: "Validation Report for **adoptr** package"
-author: "Kevin Kunzmann & Maximilian Pilz"
+author: "Kevin Kunzmann, Maximilian Pilz, Nico Bruder"
 date: "`r Sys.Date()`"
 bibliography:
 - book.bib
@@ -58,7 +58,7 @@ much as possible.
 No warranty whatsoever as to the correctness of **adoptr** nor the
 completeness of the validation report are given by the authors.
 
-We assume that the reader is familiar with the notation an theoretical
+We assume that the reader is familiar with the notation and theoretical
 background of **adoptr**.
 Otherwise, the following resources might be of help:
 
@@ -114,7 +114,7 @@ report only provides evidence of the correctness on the respective
 Travis-CI cloud virtual machine infrastructure using the respective 
 most recent release of R and the most recent versions of the 
 dependencies available on CRAN.
-In some instances it might therefore be desireable to conduct a
+In some instances it might therefore be desirable to conduct a
 local validaton of **adoptr**.
 
 To do so, one should install **adoptr** with the `INSTALL_opts` option
@@ -514,7 +514,7 @@ Required packages are loaded here,
 the random seed is defined and set centrally, and the default number
 of iteration is increased to make sure that all scenarios 
 converge properly.
-Additionally R scripts with convenience functions are sourced here as well.
+Additional R scripts with convenience functions are sourced here as well.
 There are three additional functions for this report.
 `rpact_design` creates a two-stage design via the package **rpact** [@R-rpact]
 in the notation of **adoptr**.

@@ -1,0 +1,216 @@
+# Scenario VIII: large effect, unknown variance {#scenarioVIII}
+
+## Details
+
+In this scenario, we investigate the scenario of a large effect with unknown common variance $\sigma$. The test statistic then follows a $t$-distribution. For a large sample size, the $t$-distribution can be approximated by the normal distribution and we find ourselves in [Scenario I](#scenarioI).
+The larger the assumed effect size in the alternative, the lower the necessary number of subjects to achieve a minimum power. Thus, we choose an effect size of $\delta=1$ with point prior distribution. The null hypothesis is given by $\mathcal{H}_0: \delta \leq 0$. The maximal type one error is bounded by $\alpha=0.025$ and at the point alternative of $\delta=1$ the power should be at least $0.9$. 
+
+```{r}
+#data distributions and hypothesis
+datadist <- Student(two_armed=TRUE)
+H_0 <- PointMassPrior(.0, 1)
+prior <- PointMassPrior(1.0, 1)
+
+#define constraints
+alpha <- 0.025
+min_power <- 0.9
+toer_cnstr <- Power(datadist,H_0) <= alpha
+pow_cnstr <- Power(datadist,prior) >= min_power
+```
+
+
+## Variant VIII-1: Minimizing Expected Sample Size under Point Prior {#variantVIII_1}
+
+### Objective
+
+Firstly, we minimize the expected sample size under the alternative, e.g. $\boldsymbol{E}\big[n(\mathcal{D})\big]$.
+```{r}
+ess <- ExpectedSampleSize(datadist, prior)
+```
+
+### Constraints
+
+No additional constraints beside type one error rate and power are considered in this variant.
+
+### Initial Designs
+
+For this example, the optimal one-stage, group-sequential, and generic two-stage designs are computed. The initial design for the one-stage case is determined heuristically. Both the group sequential and the generic two-stage designs are optimized starting from the corresponding group-sequential design as computed by the `rpact` package.
+
+```{r}
+order <- 7L
+# data frame of initial designs 
+tbl_designs <- tibble(
+    type    = c("one-stage", "group-sequential", "two-stage"),
+    initial = list(
+        OneStageDesign(20, 2.0),
+        rpact_design(datadist, 1.0, 0.025, 0.9, TRUE, order),
+        TwoStageDesign(rpact_design(datadist, 1.0, 0.025, 0.9, TRUE, order))) )
+```
+
+
+
+### Optimization
+
+```{r}
+tbl_designs <- tbl_designs %>% 
+    mutate(
+       optimal = purrr::map(initial, ~minimize(
+          ess,
+          subject_to(
+              toer_cnstr,
+              pow_cnstr
+          ),
+          
+          initial_design = ., 
+          opts           = opts)) )
+```
+
+### Test Cases
+
+To avoid improper solutions, it is first verified that the maximum number of iterations was not exceeded in any of the three cases.
+
+```{r}
+tbl_designs %>% 
+  transmute(
+      type, 
+      iterations = purrr::map_int(tbl_designs$optimal, 
+                                  ~.$nloptr_return$iterations) ) %>%
+  {print(.); .} %>% 
+  {testthat::expect_true(all(.$iterations < opts$maxeval))}
+```
+
+Next, the type one error rate and power constraints are verified for all three designs by simulation:
+
+```{r}
+tbl_designs %>% 
+  transmute(
+      type, 
+      toer  = purrr::map(tbl_designs$optimal, 
+                         ~sim_pr_reject(.[[1]], .0, datadist)$prob), 
+      power = purrr::map(tbl_designs$optimal, 
+                         ~sim_pr_reject(.[[1]], 1.0, datadist)$prob) ) %>% 
+  unnest(., cols = c(toer, power)) %>% 
+  {print(.); .} %>% {
+  testthat::expect_true(all(.$toer  <= alpha * (1 + tol)))
+  testthat::expect_true(all(.$power >= min_power * (1 - tol))) 
+}
+```
+
+The $n_2$ function of the optimal two-stage design is expected to be monotonously decreasing:
+
+```{r}
+expect_true(
+    all(diff(
+        # get optimal two-stage design n2 pivots
+        tbl_designs %>% filter(type == "two-stage") %>%
+           {.[["optimal"]][[1]]$design@n2_pivots} 
+        ) < 0) )
+```
+Since the optimal two-stage design is more flexible than the optimal group-sequential design (constant
+$n_2$ function) and this is more flexible than the optimal one-stage design (no second stage), the expected sample sizes under the prior should be ordered in the opposite way. Additionally, expected sample sizes under the null hypothesis are computed both via `evaluate()` and simulation-based.
+
+```{r}
+tbl_designs %>% 
+    mutate(
+        ess      = map_dbl(optimal,
+                           ~evaluate(ess, .$design) ),
+        ess_sim  = map_dbl(optimal,
+                           ~sim_n(.$design, 1, datadist)$n ),
+        ess0     = map_dbl(optimal,
+                           ~evaluate(ess0, .$design) ),
+        ess0_sim = map_dbl(optimal,
+                           ~sim_n(.$design, .0, datadist)$n ) ) %>% 
+    {print(.); .} %>% {
+    # sim/evaluate same under alternative?
+    testthat::expect_equal(.$ess, .$ess_sim, 
+                           tolerance = tol_n,
+                           scale = 1)
+    # sim/evaluate same under null?
+    testthat::expect_equal(.$ess0, .$ess0_sim, 
+                           tolerance = tol_n,
+                           scale = 1)
+    # monotonicity with respect to degrees of freedom
+    testthat::expect_true(all(diff(.$ess) < 0)) 
+}
+```
+
+The expected sample size under the alternative must be lower or equal than the expected sample size of the initial rpact group-sequential design that is based on the inverse normal combination test.
+
+```{r}
+testthat::expect_lte(
+  evaluate(ess, 
+             tbl_designs %>% 
+                filter(type == "group-sequential") %>% 
+                dplyr::pull(optimal) %>% 
+                .[[1]]  %>%
+                .$design ),
+    evaluate(ess, 
+             tbl_designs %>% 
+                filter(type == "group-sequential") %>% 
+                dplyr::pull(initial) %>% 
+                .[[1]] ) )
+```
+
+## Variant VIII-2: Comparison to Normal Distribution
+
+### Generate Comparison Design
+We now compare the expected sample size of this scenario to the expected sample size when we assume that the variance is known. Thus, we need to find the optimal designs with normal distributed test statistic. These steps are completely analogous to scenario I. 
+
+```{r}
+datadistnorm <- Normal(two_armed=TRUE)
+H_0norm <- PointMassPrior(.0,1)
+priornorm <- PointMassPrior(1.0,1)
+
+toernorm <- Power(datadistnorm,H_0norm) <= alpha
+pownorm <- Power(datadistnorm,priornorm) >= min_power
+```
+
+We minimize the expected sample size under the alternative.
+```{r}
+essnorm <- ExpectedSampleSize(datadistnorm,priornorm)
+```
+
+We now choose different initial designs since we do not use the $t$-distribution anymore. 
+```{r}
+tbl_designsnorm <- tibble(
+    type    = c("one-stage", "group-sequential", "two-stage"),
+    initial = list(
+        OneStageDesign(20, 2.0),
+        rpact_design(datadist, 1.0, 0.025, 0.9, TRUE, order),
+        TwoStageDesign(rpact_design(datadist, 1.0, 0.025, 0.9, TRUE, order))) )
+```
+
+```{r}
+tbl_designsnorm <- tbl_designsnorm %>% 
+    mutate(
+       optimal = purrr::map(initial, ~minimize(
+          ess,
+          subject_to(
+              toernorm,
+              pownorm
+          ),
+          
+          initial_design = ., 
+          opts           = opts))  )
+
+```
+
+### Test Cases
+In all of the three designs, we should see that the expected sample size under the normal distributed test statistic is lower than the expected sample size when we use the $t$-distribution.
+
+```{r}
+essstudent <- map_dbl(tbl_designs$optimal,~evaluate(ess,.$design))
+essnorm <- map_dbl(tbl_designsnorm$optimal,~evaluate(ess,.$design))
+```
+
+```{r,echo=FALSE}
+cat("Student","\n",essstudent)
+cat("Normal","\n",essnorm)
+```
+
+```{r}
+diff <- essstudent-essnorm
+testthat::expect_true(all(diff > 0))
+```
+
+

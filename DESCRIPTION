@@ -30,5 +30,3 @@ Depends:
     testthat,
     pwr,
     tinytex
-Remotes:
-    github::optad/adoptr

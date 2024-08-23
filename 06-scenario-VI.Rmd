@@ -158,13 +158,13 @@ testthat::expect_lte(
   evaluate(ess, 
              tbl_designs %>% 
                 filter(type == "group-sequential") %>% 
-                .$optimal %>% 
+                dplyr::pull(optimal) %>% 
                 .[[1]]  %>%
                 .$design ),
     evaluate(ess, 
              tbl_designs %>% 
                 filter(type == "group-sequential") %>% 
-                .$initial %>% 
+                dplyr::pull(initial) %>% 
                 .[[1]] ) )
 ```
 
@@ -184,16 +184,16 @@ tibble(
     design = list(
         tbl_designs %>% 
                 filter(type == "group-sequential") %>% 
-                .$initial %>% 
+                dplyr::pull(initial) %>% 
                 .[[1]] , 
         tbl_designs %>% 
                 filter(type == "group-sequential") %>% 
-                .$optimal %>% 
+                dplyr::pull(optimal) %>% 
                 .[[1]] %>%
                 .$design, 
         tbl_designs %>% 
                 filter(type == "two-stage") %>% 
-                .$optimal  %>% 
+                dplyr::pull(optimal)  %>% 
                 .[[1]] %>%
                 .$design ) ) %>% 
   # plot the designs
@@ -235,7 +235,7 @@ Optimization under the null favors a monotonically increasing sample size functi
 ```{r}
 init_design_h0 <- tbl_designs %>% 
     filter(type == "two-stage") %>% 
-    .$initial %>% 
+    dplyr::pull(initial) %>% 
     .[[1]]
 init_design_h0@c2_pivots <- rep(2, order)
 
@@ -305,11 +305,11 @@ print(tbl_performance)
 ```
 ```{r}
 testthat::expect_lte(
-    tbl_performance %>% filter(delta == 0) %>% .$power_sim,
+    tbl_performance %>% filter(delta == 0) %>% dplyr::pull(power_sim),
     alpha * (1 + tol) )
 
 testthat::expect_gte(
-    tbl_performance %>% filter(delta == 0.2) %>% .$power_sim,
+    tbl_performance %>% filter(delta == 0.2) %>% dplyr::pull(power_sim),
     min_power * (1 - tol) )
 
 # make sure that evaluate() leads to same results
@@ -329,7 +329,7 @@ testthat::expect_gte(
     evaluate(ess0, 
              tbl_designs %>% 
                 filter(type == "two-stage") %>% 
-                .$initial %>% 
+                dplyr::pull(initial) %>% 
                 .[[1]] ),
     evaluate(ess0, opt_h0$design) )
 ```
@@ -364,7 +364,7 @@ opt_cp <- minimize(
 
     initial_design = tbl_designs %>% 
         filter(type == "two-stage") %>% 
-        .$initial %>% 
+        dplyr::pull(initial) %>% 
         .[[1]],
     opts = opts )
 ```
@@ -406,11 +406,11 @@ print(tbl_performance)
 
 ```{r}
 testthat::expect_lte(
-    tbl_performance %>% filter(delta == 0) %>% .$power_sim,
+    tbl_performance %>% filter(delta == 0) %>% dplyr::pull(power_sim),
     alpha * (1 + tol) )
 
 testthat::expect_gte(
-    tbl_performance %>% filter(delta == 0.2) %>% .$power_sim,
+    tbl_performance %>% filter(delta == 0.2) %>% dplyr::pull(power_sim),
     min_power * (1 - tol) )
 
 # make sure that evaluate() leads to same results
@@ -450,7 +450,10 @@ testthat::expect_gte(
         ess, 
         tbl_designs %>% 
             filter(type == "two-stage") %>% 
-            .$optimal %>% 
+            dplyr::pull(optimal) %>% 
             .[[1]] %>% 
             .$design ) )
 ```
+
+
+
