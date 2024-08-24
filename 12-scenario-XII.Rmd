@@ -1,0 +1,68 @@
+# Scenario XII: Using further constraints {#scenarioXII}
+
+## General assumptions
+
+`adoptr` offers the possibility to use a variety of further constraints. This chapter is dedicated to show a first scenario in which further conditions on the trial need to be met. We assume a classical two-arm trial with normal test statistic and known variance. The null hypothesis is given by $\mathcal{H}_0: \delta \leq 0$ and the alternative is assumed to be an effect size of $\delta=0.5$ with point prior distribution. The type one error rate should be lower than $\alpha=0.025$ and the power at the alternative must be at least $0.9$. The objective function to be minimized is the expected sample size under the alternative, i.e. $\boldsymbol{E}\big[n(\mathcal{D})\big]$. 
+```{r}
+datadist <- Normal(two_armed = TRUE)
+H_0 <- PointMassPrior(.0, 1)
+prior <- PointMassPrior(0.5, 1)
+
+alpha <- 0.025
+min_power <- 0.9
+toer_cnstr <- Power(datadist, H_0) <= alpha
+pow_cnstr <- Power(datadist, prior) >= min_power
+
+ess <- ExpectedSampleSize(datadist, prior)
+```
+
+## Constraint X-1: Maximal Sample Size
+
+### Details
+
+Even though the expected sample size of adaptive two-stage designs is generally lower than the expected sample size of classical one-stage designs, it is possible that the sample size of two-stage designs exceeds the sample size of one-stage designs in some cases. Thus, it is not absurd to assume that the maximum sample size should have an upper bound. We say this upper bound is given by $120$.
+
+```{r}
+smplsize_cnstr <- MaximumSampleSize() <= 120
+```
+
+### Initial Designs
+As an initial design, we choose the `adoptr`-function `get_initial_design()`. 
+```{r}
+init_twostage <- get_initial_design(0.5, alpha, 1 - min_power, type_design = "two-stage", 
+                                    dist = datadist)
+```
+
+### Optimization
+```{r}
+opt_twostage_cnstr <- minimize(ess, subject_to(toer_cnstr, pow_cnstr, smplsize_cnstr),
+                               initial_design = init_twostage)
+```
+
+### Testcases
+
+At first, we verify the type one error rate and power constraints by simulation:
+
+```{r}
+toer <- sim_pr_reject(opt_twostage_cnstr$design, 0.0, datadist)
+power <- sim_pr_reject(opt_twostage_cnstr$design, 0.5, datadist)
+
+testthat::expect_true(toer$prob <= alpha * (1 + tol))
+testthat::expect_true(power$prob >= min_power * (1 - tol))
+```
+
+We now check that the maximal sample size is always smaller than $118$:
+```{r}
+testthat::expect_true(evaluate(MaximumSampleSize(), opt_twostage_cnstr$design) <= 120)
+```
+
+Since we added a constraint to our minimization problem, the expected sample size of this design should be higher than the expected sample size without the constraint on the maximum sample size.
+
+```{r}
+opt_twostage <- minimize(ess, subject_to(toer_cnstr,pow_cnstr), initial_design = init_twostage)
+
+testthat::expect_true(evaluate(ess,opt_twostage_cnstr$design) >= evaluate(ess, opt_twostage$design))
+```
+
+
+
