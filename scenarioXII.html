@@ -4,18 +4,18 @@
 
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <title>References | Validation Report for adoptr package</title>
+  <title>13 Scenario XII: Using further constraints | Validation Report for adoptr package</title>
   <meta name="description" content="This is an automatically generated validation report for the adoptr R package published via bookdown." />
   <meta name="generator" content="bookdown 0.40 and GitBook 2.6.7" />
 
-  <meta property="og:title" content="References | Validation Report for adoptr package" />
+  <meta property="og:title" content="13 Scenario XII: Using further constraints | Validation Report for adoptr package" />
   <meta property="og:type" content="book" />
   
   <meta property="og:description" content="This is an automatically generated validation report for the adoptr R package published via bookdown." />
   <meta name="github-repo" content="optad/adoptr-validation-report" />
 
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="References | Validation Report for adoptr package" />
+  <meta name="twitter:title" content="13 Scenario XII: Using further constraints | Validation Report for adoptr package" />
   
   <meta name="twitter:description" content="This is an automatically generated validation report for the adoptr R package published via bookdown." />
   
@@ -30,8 +30,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   
   
-<link rel="prev" href="scenarioXII.html"/>
-
+<link rel="prev" href="scenarioXI.html"/>
+<link rel="next" href="references.html"/>
 <script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
@@ -457,24 +457,55 @@ div.csl-indent {
           <div class="page-inner">
 
             <section class="normal" id="section-">
-<div id="references" class="section level1 unnumbered hasAnchor">
-<h1>References<a href="references.html#references" class="anchor-section" aria-label="Anchor link to header"></a></h1>
+<div id="scenarioXII" class="section level1 hasAnchor" number="13">
+<h1><span class="header-section-number">13</span> Scenario XII: Using further constraints<a href="scenarioXII.html#scenarioXII" class="anchor-section" aria-label="Anchor link to header"></a></h1>
+<div id="general-assumptions" class="section level2 hasAnchor" number="13.1">
+<h2><span class="header-section-number">13.1</span> General assumptions<a href="scenarioXII.html#general-assumptions" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p><code>adoptr</code> offers the possibility to use a variety of further constraints. This chapter is dedicated to show a first scenario in which further conditions on the trial need to be met. We assume a classical two-arm trial with normal test statistic and known variance. The null hypothesis is given by <span class="math inline">\(\mathcal{H}_0: \delta \leq 0\)</span> and the alternative is assumed to be an effect size of <span class="math inline">\(\delta=0.5\)</span> with point prior distribution. The type one error rate should be lower than <span class="math inline">\(\alpha=0.025\)</span> and the power at the alternative must be at least <span class="math inline">\(0.9\)</span>. The objective function to be minimized is the expected sample size under the alternative, i.e. <span class="math inline">\(\boldsymbol{E}\big[n(\mathcal{D})\big]\)</span>.</p>
+<div class="sourceCode" id="cb267"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb267-1"><a href="scenarioXII.html#cb267-1" tabindex="-1"></a>datadist <span class="ot">&lt;-</span> <span class="fu">Normal</span>(<span class="at">two_armed =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb267-2"><a href="scenarioXII.html#cb267-2" tabindex="-1"></a>H_0 <span class="ot">&lt;-</span> <span class="fu">PointMassPrior</span>(.<span class="dv">0</span>, <span class="dv">1</span>)</span>
+<span id="cb267-3"><a href="scenarioXII.html#cb267-3" tabindex="-1"></a>prior <span class="ot">&lt;-</span> <span class="fu">PointMassPrior</span>(<span class="fl">0.5</span>, <span class="dv">1</span>)</span>
+<span id="cb267-4"><a href="scenarioXII.html#cb267-4" tabindex="-1"></a></span>
+<span id="cb267-5"><a href="scenarioXII.html#cb267-5" tabindex="-1"></a>alpha <span class="ot">&lt;-</span> <span class="fl">0.025</span></span>
+<span id="cb267-6"><a href="scenarioXII.html#cb267-6" tabindex="-1"></a>min_power <span class="ot">&lt;-</span> <span class="fl">0.9</span></span>
+<span id="cb267-7"><a href="scenarioXII.html#cb267-7" tabindex="-1"></a>toer_cnstr <span class="ot">&lt;-</span> <span class="fu">Power</span>(datadist, H_0) <span class="sc">&lt;=</span> alpha</span>
+<span id="cb267-8"><a href="scenarioXII.html#cb267-8" tabindex="-1"></a>pow_cnstr <span class="ot">&lt;-</span> <span class="fu">Power</span>(datadist, prior) <span class="sc">&gt;=</span> min_power</span>
+<span id="cb267-9"><a href="scenarioXII.html#cb267-9" tabindex="-1"></a></span>
+<span id="cb267-10"><a href="scenarioXII.html#cb267-10" tabindex="-1"></a>ess <span class="ot">&lt;-</span> <span class="fu">ExpectedSampleSize</span>(datadist, prior)</span></code></pre></div>
+</div>
+<div id="constraint-x-1-maximal-sample-size" class="section level2 hasAnchor" number="13.2">
+<h2><span class="header-section-number">13.2</span> Constraint X-1: Maximal Sample Size<a href="scenarioXII.html#constraint-x-1-maximal-sample-size" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<div id="details-11" class="section level3 hasAnchor" number="13.2.1">
+<h3><span class="header-section-number">13.2.1</span> Details<a href="scenarioXII.html#details-11" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<p>Even though the expected sample size of adaptive two-stage designs is generally lower than the expected sample size of classical one-stage designs, it is possible that the sample size of two-stage designs exceeds the sample size of one-stage designs in some cases. Thus, it is not absurd to assume that the maximum sample size should have an upper bound. We say this upper bound is given by <span class="math inline">\(120\)</span>.</p>
+<div class="sourceCode" id="cb268"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb268-1"><a href="scenarioXII.html#cb268-1" tabindex="-1"></a>smplsize_cnstr <span class="ot">&lt;-</span> <span class="fu">MaximumSampleSize</span>() <span class="sc">&lt;=</span> <span class="dv">120</span></span></code></pre></div>
+</div>
+<div id="initial-designs-5" class="section level3 hasAnchor" number="13.2.2">
+<h3><span class="header-section-number">13.2.2</span> Initial Designs<a href="scenarioXII.html#initial-designs-5" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<p>As an initial design, we choose the <code>adoptr</code>-function <code>get_initial_design()</code>.</p>
+<div class="sourceCode" id="cb269"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb269-1"><a href="scenarioXII.html#cb269-1" tabindex="-1"></a>init_twostage <span class="ot">&lt;-</span> <span class="fu">get_initial_design</span>(<span class="fl">0.5</span>, alpha, <span class="dv">1</span> <span class="sc">-</span> min_power, <span class="at">type_design =</span> <span class="st">&quot;two-stage&quot;</span>, </span>
+<span id="cb269-2"><a href="scenarioXII.html#cb269-2" tabindex="-1"></a>                                    <span class="at">dist =</span> datadist)</span></code></pre></div>
+</div>
+<div id="optimization-23" class="section level3 hasAnchor" number="13.2.3">
+<h3><span class="header-section-number">13.2.3</span> Optimization<a href="scenarioXII.html#optimization-23" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<div class="sourceCode" id="cb270"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb270-1"><a href="scenarioXII.html#cb270-1" tabindex="-1"></a>opt_twostage_cnstr <span class="ot">&lt;-</span> <span class="fu">minimize</span>(ess, <span class="fu">subject_to</span>(toer_cnstr, pow_cnstr, smplsize_cnstr),</span>
+<span id="cb270-2"><a href="scenarioXII.html#cb270-2" tabindex="-1"></a>                               <span class="at">initial_design =</span> init_twostage)</span></code></pre></div>
+</div>
+<div id="testcases" class="section level3 hasAnchor" number="13.2.4">
+<h3><span class="header-section-number">13.2.4</span> Testcases<a href="scenarioXII.html#testcases" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<p>At first, we verify the type one error rate and power constraints by simulation:</p>
+<div class="sourceCode" id="cb271"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb271-1"><a href="scenarioXII.html#cb271-1" tabindex="-1"></a>toer <span class="ot">&lt;-</span> <span class="fu">sim_pr_reject</span>(opt_twostage_cnstr<span class="sc">$</span>design, <span class="fl">0.0</span>, datadist)</span>
+<span id="cb271-2"><a href="scenarioXII.html#cb271-2" tabindex="-1"></a>power <span class="ot">&lt;-</span> <span class="fu">sim_pr_reject</span>(opt_twostage_cnstr<span class="sc">$</span>design, <span class="fl">0.5</span>, datadist)</span>
+<span id="cb271-3"><a href="scenarioXII.html#cb271-3" tabindex="-1"></a></span>
+<span id="cb271-4"><a href="scenarioXII.html#cb271-4" tabindex="-1"></a>testthat<span class="sc">::</span><span class="fu">expect_true</span>(toer<span class="sc">$</span>prob <span class="sc">&lt;=</span> alpha <span class="sc">*</span> (<span class="dv">1</span> <span class="sc">+</span> tol))</span>
+<span id="cb271-5"><a href="scenarioXII.html#cb271-5" tabindex="-1"></a>testthat<span class="sc">::</span><span class="fu">expect_true</span>(power<span class="sc">$</span>prob <span class="sc">&gt;=</span> min_power <span class="sc">*</span> (<span class="dv">1</span> <span class="sc">-</span> tol))</span></code></pre></div>
+<p>We now check that the maximal sample size is always smaller than <span class="math inline">\(118\)</span>:</p>
+<div class="sourceCode" id="cb272"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb272-1"><a href="scenarioXII.html#cb272-1" tabindex="-1"></a>testthat<span class="sc">::</span><span class="fu">expect_true</span>(<span class="fu">evaluate</span>(<span class="fu">MaximumSampleSize</span>(), opt_twostage_cnstr<span class="sc">$</span>design) <span class="sc">&lt;=</span> <span class="dv">120</span>)</span></code></pre></div>
+<p>Since we added a constraint to our minimization problem, the expected sample size of this design should be higher than the expected sample size without the constraint on the maximum sample size.</p>
+<div class="sourceCode" id="cb273"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb273-1"><a href="scenarioXII.html#cb273-1" tabindex="-1"></a>opt_twostage <span class="ot">&lt;-</span> <span class="fu">minimize</span>(ess, <span class="fu">subject_to</span>(toer_cnstr,pow_cnstr), <span class="at">initial_design =</span> init_twostage)</span>
+<span id="cb273-2"><a href="scenarioXII.html#cb273-2" tabindex="-1"></a></span>
+<span id="cb273-3"><a href="scenarioXII.html#cb273-3" tabindex="-1"></a>testthat<span class="sc">::</span><span class="fu">expect_true</span>(<span class="fu">evaluate</span>(ess,opt_twostage_cnstr<span class="sc">$</span>design) <span class="sc">&gt;=</span> <span class="fu">evaluate</span>(ess, opt_twostage<span class="sc">$</span>design))</span></code></pre></div>
 
-<div id="refs" class="references csl-bib-body hanging-indent" entry-spacing="0">
-<div class="csl-entry">
-Bauer, P., F. Bretz, V. Dragalin, F. König, and G. Wassmer. 2015. <span>“Twenty-Five Years of Confirmatory Adaptive Designs: Opportunities and Pitfalls.”</span> <em>Statistics in Medicine</em> 35 (3): 325–47. <a href="https://doi.org/10.1002/sim.6472">https://doi.org/10.1002/sim.6472</a>.
-</div>
-<div class="csl-entry">
-Pilz, M., K. Kunzmann, C. Herrmann, G. Rauch, and M. Kieser. 2019. <span>“A Variational Approach to Optimal Two-Stage Designs.”</span> <em>Statistics in Medicine</em> 38 (21): 4159–71. <a href="https://doi.org/10.1002/sim.8291">https://doi.org/10.1002/sim.8291</a>.
-</div>
-<div class="csl-entry">
-Wassmer, G., and W. Brannath. 2016. <em>Group Sequential and Confirmatory Adaptive Designs in Clinical Trials</em>. Springer Series in Pharmaceutical Statistics -. Springer International Publishing.
-</div>
-<div class="csl-entry">
-Wassmer, G., and F. Pahlke. 2018. <em>Rpact: Confirmatory Adaptive Clinical Trial Design and Analysis</em>. <a href="https://www.rpact.org">https://www.rpact.org</a>.
-</div>
-<div class="csl-entry">
-Wickham, H., R Studio, and R Core Team. 2018. <em>Testthat: Unit Testing for r</em>. <a href="https://cran.r-project.org/web/packages/testthat/index.html">https://cran.r-project.org/web/packages/testthat/index.html</a>.
 </div>
 </div>
 </div>
@@ -483,8 +514,8 @@ Wickham, H., R Studio, and R Core Team. 2018. <em>Testthat: Unit Testing for r</
           </div>
         </div>
       </div>
-<a href="scenarioXII.html" class="navigation navigation-prev navigation-unique" aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
-
+<a href="scenarioXI.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="references.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
@@ -515,7 +546,7 @@ gitbook.start({
 "size": 2
 },
 "edit": {
-"link": "https://github.com/optad/adoptr-validation-report/edit/master/20-references.Rmd",
+"link": "https://github.com/optad/adoptr-validation-report/edit/master/12-scenario-XII.Rmd",
 "text": "Edit"
 },
 "history": {
