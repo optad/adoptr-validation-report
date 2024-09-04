@@ -151,7 +151,7 @@ testthat::expect_lte(
                 .[[1]] ) )
 ```
 
-## Variant VIII-2: Comparison to Normal Distribution
+## Variant VIII-2: Comparison to Normal Distribution {#variantVIII_2}
 
 ### Generate Comparison Design
 We now compare the expected sample size of this scenario to the expected sample size when we assume that the variance is known. Thus, we need to find the optimal designs with normal distributed test statistic. These steps are completely analogous to scenario I. 

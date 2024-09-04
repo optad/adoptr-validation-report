@@ -4,7 +4,7 @@
 
 In this scenario, we consider the case where the test statistic is Chi-squared distributed. It is useful when we conduct a test with more than two treatment arms or when we test two-sided with a normally distributed test statistic. In the first case, we assume binary endpoints, so we have a $2 \times k$ contingency table. In the second case, we conduct a two-sided Z-test. As the normal distribution is symmetric around $0$, this test is equivalent to a one-sided test with test statistic $Z^2$.
 
-## Variant X-1: Contingeny table with binary endpoints
+## Variant X-1: Contingency table with binary endpoints {#variantX_1}
 
 ### Setup
 
@@ -154,7 +154,7 @@ testthat::expect_lte(
                 .[[1]] ) )
 ```
 
-## Variant X-2: Two-sided Z-test
+## Variant X-2: Two-sided Z-test {#variantX_2}
 
 In the second variant, we want to conduct a two-sided test with normally distributed outcome. Unfortunately, a two-sided test in the setting of two-stage trials is more difficult to implement, as the decision whether to stop early or to continue cannot be expressed in the same way as usual ($Z < c_f$ for futility, $Z > c_e$ for efficacy, $Z \in [c_f, c_e]$ for continuation). In the two-sided test scenario, we would need to consider $|Z|$, so $|Z| < c_f$ for futility, $|Z| > c_e$ for efficacy, $|Z| \in [c_f, c_e]$ for continuation. Unfortunately, this would lead to $4$ necessary boundaries, which would not fit the adoptr-framework. 
 If $Z \sim \mathcal{N}(0,1)$ under the null, we can use the fact $Z^2 \sim \chi^2$ and transform our two-sided test problem to a one-sided test. Hence, we stop early for futility if $Z^2 < c_f$, for efficacy if $Z^2 > c_e$ and we continue if $Z^2 \in [c_f, c_e]$, where $c_f$ and $c_e$ are calculated by adoptr using a $\chi^2$-distribution.

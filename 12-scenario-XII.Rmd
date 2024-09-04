@@ -16,7 +16,7 @@ pow_cnstr <- Power(datadist, prior) >= min_power
 ess <- ExpectedSampleSize(datadist, prior)
 ```
 
-## Constraint X-1: Maximal Sample Size
+## Constraint X-1: Maximal Sample Size {#variantXII.1}
 
 ### Details
 
@@ -51,7 +51,7 @@ testthat::expect_true(toer$prob <= alpha * (1 + tol))
 testthat::expect_true(power$prob >= min_power * (1 - tol))
 ```
 
-We now check that the maximal sample size is always smaller than $118$:
+We now check that the maximal sample size is always smaller than $120$:
 ```{r}
 testthat::expect_true(evaluate(MaximumSampleSize(), opt_twostage_cnstr$design) <= 120)
 ```

@@ -504,8 +504,230 @@ The control rate is assumed to equal $p_C = 0.3$.
         externally computed group-sequential design using the [rpact](https://rpact.org/) package.
     5. Are the $ESS$ values obtained from simulation the same as the ones 
         obtained by using numerical integration via `adoptr::evaluate`?
+        
+#### [Variant VI.2: Minimizing Expected Sample Size under the Null](#Variant VI_2)
 
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\,|\,\delta=0 \big]$
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.2\big] \geq 0.9$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.0\big] \leq 0.025$
+    3. One variant: two-stage
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. $n_2$ function should be monotonously increasing.
+    3. Check that optimal two-stage design comply with constraints. 
+        Internally validated by testing vs. simulated values of the power curve 
+        at respective points.
+    4. $ESS$ of optimal two-stage design is lower than $ESS$ of optimal
+        group-sequential one and that is in turn lower than the one of the
+        optimal one-stage design.
+    5. Is the $ESS$ values obtained from simulation the same as the ones 
+        obtained by using numerical integration via `adoptr::evaluate`?
+    6. $ESS$ of optimal group-sequential design is lower than $ESS$ of 
+        externally computed group-sequential design using the [rpact](https://rpact.org/) package.
+    
 
+#### [Variant VI.3: Conditional Power Constraint](#variantVI_3)
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\,|\,\delta=0.2 \big]$
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.2\big] \geq 0.9$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.0\big] \leq 0.025$
+    3. $CP := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.2, X_1 = x_1\big] \geq 0.85$
+    4. One variant: two-stage
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. Check that optimal two-stage design comply with constraints. 
+        Internally validated by testing vs. simulated values of the power curve 
+        at respective points.
+    3. Power constraint is checked on a grid over the continuation region.
+    4. $ESS$ of the design with power constraint should be higher than in [VI-1](#variantVI_1)
+    
+### [Scenario VII: Binomial Distribution, Gaussian Prior](#scenarioVII)
+
+* **Prior:** $\delta \sim \textbf{1}_{(-0.29,0.69)} \mathcal{N}(0.2,0.2)$
+
+#### [Variant VII.1: Minimizing Expected Sample Size under Continuous Prior](#variantVII_1)
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\big]$
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta > 0\big] \geq 0.8$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.0\big] \leq 0.025$
+    3. Three variants: two-stage, group-sequential, one-stage. 
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. All three **adoptr** variants (two-stage, group-sequential, one-stage) 
+        comply with constraints. Internally validated by testing vs. simulated 
+        values of the power curve at respective points.
+    3. $ESS$ of optimal two-stage design is lower than $ESS$ of optimal
+        group-sequential one and that is in turn lower than the one of the
+        optimal one-stage design.
+
+#### [Variant VII.2: Minimizing Expected Sample Size under Continuous Prior](#variantVII_2)
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\big]$
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta > 0\big] \geq 0.8$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.0\big] \leq 0.025$
+    3. $CP := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta > 0, X_1 = x_1\big] \geq 0.7$
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. Check that two-stage design 
+        complies with constraints. Internally validated by testing vs. simulated 
+        values of the power curve at respective points.
+    3. Power constraint is checked on a grid over the continuation region.
+    4. $ESS$ of the design with power constraint should be higher than in [VII-1](#variantVII_1)
+    
+### [scenarioVIII: Large Effect, Unknown Variance](#scenarioVIII)
+
+Due to the large effect size, the sample size is low. Thus, the designs are 
+computed using a $t$-distribution.
+
+#### [Variant VIII.1: Minimizing Expected Sample Size under Point Prior](#variantVIII_1)
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\,|\,\delta=1\big]$
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=1\big] \geq 0.9$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.0\big] \leq 0.025$
+    3. Three variants: two-stage, group-sequential, one-stage. 
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. All three **adoptr** variants (two-stage, group-sequential, one-stage) 
+        comply with constraints. Internally validated by testing vs. simulated 
+        values of the power curve at respective points.
+    3. $n_2$ function must be monotonously decreasing
+    4. $ESS$ of optimal two-stage design is lower than $ESS$ of optimal
+        group-sequential one and that is in turn lower than the one of the
+        optimal one-stage design.
+    5. $ESS$ of optimal group-sequential design is lower than $ESS$ of 
+        externally computed group-sequential design using the [rpact](https://rpact.org/) package.
+    6. Are the $ESS$ values obtained from simulation the same as the ones 
+        obtained by using numerical integration via `adoptr::evaluate`?
+        
+#### [Variant VIII.2 Comparison to Normal Distribution](#variantVIII_2)
+
+A design is computed under the same constraints as in [VIII.1](#variantVIII_1), but
+a normal distribution is assumed.
+
+* **Formal tests:** 
+    1. Check that the expected sample size of the design computed using a $t$-distribution
+    is higher than the expected sample size of the design which used a normal distribution.
+    
+### [Variant IX: Time-To-Event-Endpoints](#scenarioIX)
+Let $\theta$ be the hazard ratio.
+
+#### [Scenario IX.1 Minimizing expected number of events under point prior](#variantIX_1)
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\,|\,\theta=1.4\big]$ ( = expected number of events)
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\theta=1.4\big] \geq 0.8$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\theta=1.0\big] \leq 0.025$
+    3. Three variants: two-stage, group-sequential, one-stage. 
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. All three **adoptr** variants (two-stage, group-sequential, one-stage) 
+        comply with constraints. Internally validated by testing vs. simulated 
+        values of the power curve at respective points.
+    3. $ESS$ of optimal two-stage design is lower than $ESS$ of optimal
+        group-sequential one and that is in turn lower than the one of the
+        optimal one-stage design.
+    4. $ESS$ of optimal group-sequential design is lower than $ESS$ of 
+        externally computed group-sequential design using the [rpact](https://rpact.org/) package.
+        
+### [Scenario X: Chi-Squared Distribution](#scenarioX)
+
+#### [Variant X.1: Contingency Table with Binary Endpoints](#variantX_1)
+
+Let $\delta_0 = (x, y, z)$ where $x=y=z$ and $\delta_1 = (0.4, 0.5, 0.6)$, where
+each entry denotes rates in three different groups respectively.
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\,|\,\delta=\delta_1\big]$
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=\delta_1\big] \geq 0.8$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=\delta_0\big] \leq 0.025$
+    3. Three variants: two-stage, group-sequential, one-stage. 
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. All three **adoptr** variants (two-stage, group-sequential, one-stage) 
+        comply with constraints. Internally validated by testing vs. simulated 
+        values of the power curve at respective points.
+    3. Sample size function is monotonously decreasing.
+    4. $ESS$ of optimal two-stage design is lower than $ESS$ of optimal
+        group-sequential one and that is in turn lower than the one of the
+        optimal one-stage design.
+    5. $ESS$ of optimal group-sequential design is lower than $ESS$ of 
+        a Pocock-Design (computed via in-built initial design function).
+
+#### [Variant X.2: Two-Sided Z-Test](#variantX_2)
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\,|\,\delta=0.4\big]$
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.4\big] \geq 0.8$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0\big] \leq 0.05$
+    3. Three variants: two-stage, group-sequential, one-stage. 
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. All three **adoptr** variants (two-stage, group-sequential, one-stage) 
+        comply with constraints. Internally validated by simulating normally
+        distributed endpoints, squaring them and use design characteristics.
+    3. Sample size function is monotonously decreasing.
+    4. $ESS$ of optimal two-stage design is lower than $ESS$ of optimal
+        group-sequential one and that is in turn lower than the one of the
+        optimal one-stage design.
+    5. $ESS$ of optimal group-sequential design is lower than $ESS$ of 
+        a Pocock-Design (computed via in-built initial design function).
+
+### [Scenario XI: F-Distribution](#scenarioXI)
+
+#### [Variant XI.1: ANOVA](#variantXI_1)
+
+Let $\delta_0 = (x, y, z)$ where $x=y=z$ and $\delta_1 = (0.4, 0.5, 0.6)$, where
+each entry denotes group means in three different groups respectively.
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\,|\,\delta=\delta_1\big]$
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=\delta_1\big] \geq 0.8$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=\delta_0\big] \leq 0.05$
+    3. Three variants: two-stage, group-sequential, one-stage. 
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. All three **adoptr** variants (two-stage, group-sequential, one-stage) 
+        comply with constraints. Internally validated by testing vs. simulated 
+        values of the power curve at respective points.
+    3. Sample size function is monotonously decreasing.
+    4. $ESS$ of optimal two-stage design is lower than $ESS$ of optimal
+        group-sequential one and that is in turn lower than the one of the
+        optimal one-stage design.
+    5. $ESS$ of optimal group-sequential design is lower than $ESS$ of 
+        a Pocock-Design (computed via in-built initial design function).
+        
+### [Scenario XII: Further Constraints](#scenarioXII)
+
+#### [Variant XII.1: Maximal Sample Size Constraint](variantXII.1)
+
+* **Objective:** $ESS := \boldsymbol{E}\big[n(X_1)\,|\,\delta=0.5\big]$
+* **Constraints:** 
+    1. $Power := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0.5\big] \geq 0.9$
+    2. $TOER := \boldsymbol{Pr}\big[c_2(X_1) < X_2\,|\,\delta=0\big] \leq 0.025$
+    3. $MSS \leq 120$ (MSS = maximum sample size)
+* **Formal tests:**
+    1. Number of iterations are checked against default maximum to ensure proper
+      convergence.
+    2. All three **adoptr** variants (two-stage, group-sequential, one-stage) 
+        comply with constraints. Internally validated by testing vs. simulated 
+        values of the power curve at respective points and check that maximum
+        sample size is smaller than 120.
+    3. $ESS$ of optimal two-stage design with sample size constraint is higher than $ESS$ 
+        of non-constrained two-stage design.
 
 ## Technical Setup
 

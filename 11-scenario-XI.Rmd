@@ -4,7 +4,7 @@
 
 In this scenario, we compute the necessary sample size for a one-way ANOVA with $k$ groups. The resulting test statistic is $F$-distributed with $k-1$ and $nk-k$ degrees of freedom, where $n$ stands for the sample size per group.
 
-## Variant XI-1: ANOVA
+## Variant XI-1: ANOVA {#variantXI_1}
 
 ### Setup
 
