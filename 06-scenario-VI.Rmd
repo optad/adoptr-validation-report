@@ -335,7 +335,7 @@ testthat::expect_gte(
 ```
 
 
-## Variant VI-3: Conditional Power constraint
+## Variant VI-3: Conditional Power constraint {#variantVI_3}
 
 ### Objective
 Same as in [VI-1](#variantVI_1), the expected sample size under the alternative is minimized.

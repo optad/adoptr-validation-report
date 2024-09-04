@@ -25,7 +25,7 @@ toer_cnstr <- Power(datadist, H_0) <= alpha
 epow_cnstr <- Power(datadist, condition(prior, c(0.0, 0.69))) >= min_epower
 ```
 
-## Variant VII-1: Minimizing Expected Sample Size under Continuous Prior {#variantVII-1}
+## Variant VII-1: Minimizing Expected Sample Size under Continuous Prior {#variantVII_1}
 
 ### Objective
 
@@ -120,7 +120,7 @@ tbl_designs %>%
     testthat::expect_true(all(diff(.$ess) < 0)) }
 ```
 
-## Variant VII-2: Conditional Power Constraint
+## Variant VII-2: Conditional Power Constraint {variantVII_2}
 
 ### Objective
 As in [VariantVII-1](#variantVII-1), the expected sample size under the full prior is minimized. 

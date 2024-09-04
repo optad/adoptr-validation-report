@@ -12,9 +12,9 @@ alpha <- 0.025
 min_power <- 0.8
 ```
 
-## Variant IX-1: Minimizing expected number of events under point prior
+## Variant IX-1: Minimizing expected number of events under point prior {#variantIX_1}
 
-Under the alternative, we us a hazard ratio of $\theta=1.4$ for the point prior of the alternative. 
+Under the alternative, we use a hazard ratio of $\theta=1.4$ for the point prior of the alternative. 
 
 ```{r}
 prior <- PointMassPrior(1.4, 1)
